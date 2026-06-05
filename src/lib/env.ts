@@ -40,6 +40,11 @@ export const env = {
   get anthropicModel() {
     return optional("ANTHROPIC_MODEL", "claude-sonnet-4-6");
   },
+  // Modelo para las RESPUESTAS de /search (RAG). Haiku = más rápido y barato.
+  // La digestión de documentos sigue usando ANTHROPIC_MODEL (mejor calidad).
+  get anthropicAnswerModel() {
+    return optional("ANTHROPIC_ANSWER_MODEL", "claude-haiku-4-5-20251001");
+  },
 
   get voyageApiKey() {
     return required("VOYAGE_API_KEY");

@@ -124,7 +124,7 @@ export async function answerWithContext(
     .join("\n\n---\n\n");
 
   const msg = await client().messages.create({
-    model: env.anthropicModel,
+    model: env.anthropicAnswerModel,
     max_tokens: 1024,
     system:
       "Eres un asistente que responde preguntas basándote EXCLUSIVAMENTE en las " +
