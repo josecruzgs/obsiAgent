@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { query } from "@/lib/db";
+import { IconBook, IconLink, IconUpload, IconNotes, IconGraph } from "@/components/icons";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,22 +22,25 @@ async function getStats() {
 const ACTIONS = [
   {
     href: "/ingest",
-    icon: "📥",
-    bg: "rgba(108,92,231,0.12)",
+    icon: <IconUpload />,
+    bg: "rgba(108,92,231,0.14)",
+    color: "#6c5ce7",
     title: "Ingerir",
     desc: "Sube PDF/Word o pega texto. La IA genera resumen, tags y enlaces.",
   },
   {
     href: "/notas",
-    icon: "📝",
-    bg: "rgba(0,184,148,0.14)",
+    icon: <IconNotes />,
+    bg: "rgba(0,184,148,0.16)",
+    color: "#00b894",
     title: "Notas",
     desc: "Busca, abre, edita o borra tus notas con buscador y paginación.",
   },
   {
     href: "/graph",
-    icon: "🕸️",
-    bg: "rgba(255,140,66,0.16)",
+    icon: <IconGraph />,
+    bg: "rgba(255,140,66,0.18)",
+    color: "#ff8c42",
     title: "Grafo",
     desc: "Visualiza cómo se conectan tus notas entre sí.",
   },
@@ -65,8 +69,11 @@ export default async function Home() {
       <div className="stats">
         <div className="stat">
           <div className="stat-head">
-            <span className="stat-icon" style={{ background: "rgba(108,92,231,0.16)" }}>
-              📚
+            <span
+              className="stat-icon"
+              style={{ background: "rgba(108,92,231,0.16)", color: "#6c5ce7" }}
+            >
+              <IconBook />
             </span>
             Notas indexadas
           </div>
@@ -75,8 +82,11 @@ export default async function Home() {
         </div>
         <div className="stat">
           <div className="stat-head">
-            <span className="stat-icon" style={{ background: "rgba(0,184,148,0.18)" }}>
-              🔗
+            <span
+              className="stat-icon"
+              style={{ background: "rgba(0,184,148,0.18)", color: "#00b894" }}
+            >
+              <IconLink />
             </span>
             Enlaces entre notas
           </div>
@@ -89,7 +99,7 @@ export default async function Home() {
       <div className="actions">
         {ACTIONS.map((a) => (
           <Link key={a.href} href={a.href} className="action">
-            <div className="action-icon" style={{ background: a.bg }}>
+            <div className="action-icon" style={{ background: a.bg, color: a.color }}>
               {a.icon}
             </div>
             <h3>{a.title}</h3>

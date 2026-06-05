@@ -89,7 +89,7 @@ a:hover {
   place-items: center;
   background: linear-gradient(135deg, var(--accent), #9b8cff);
   box-shadow: 0 6px 16px rgba(108, 92, 231, 0.35);
-  font-size: 16px;
+  color: #fff;
 }
 .nav-pills {
   display: flex;
@@ -151,21 +151,10 @@ a:hover {
 .hero {
   background: linear-gradient(120deg, var(--hero-from), var(--hero-to));
   border-radius: 20px;
-  padding: 26px 28px;
+  padding: 18px;
   margin-bottom: 22px;
   color: #fff;
   box-shadow: 0 14px 40px rgba(92, 70, 224, 0.3);
-}
-.hero-eyebrow {
-  font-size: 13px;
-  opacity: 0.85;
-  font-weight: 500;
-}
-.hero-title {
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  margin: 2px 0 18px;
 }
 .hero-search {
   display: flex;
@@ -176,7 +165,7 @@ a:hover {
   border-radius: 14px;
   padding: 8px 10px 8px 14px;
   backdrop-filter: blur(6px);
-  max-width: 560px;
+  width: 100%;
 }
 .hero-search svg {
   width: 18px;
@@ -481,6 +470,12 @@ code {
   color: var(--muted);
   font-size: 13.5px;
   line-height: 1.5;
+}
+
+.stat-icon svg,
+.action-icon svg {
+  width: 22px;
+  height: 22px;
 }
 
 /* ─── Página Notas ───────────────────────────────────────────────────── */

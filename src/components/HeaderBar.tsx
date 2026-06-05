@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { IconSearch, IconClose } from "./icons";
 
 interface SearchResult {
   ok: boolean;
@@ -64,20 +65,8 @@ export default function HeaderBar() {
 
   return (
     <div className="hero">
-      <div className="hero-eyebrow">obsiAgent</div>
-      <div className="hero-title">Tu base de conocimiento</div>
       <form className="hero-search" onSubmit={submit}>
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.9}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <circle cx="11" cy="11" r="7" />
-          <path d="m21 21-4.3-4.3" />
-        </svg>
+        <IconSearch />
         <input
           type="text"
           value={q}
@@ -93,14 +82,14 @@ export default function HeaderBar() {
         <div className="modal-backdrop" onClick={() => setOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <strong>🔍 {activeQuery}</strong>
+              <strong>{activeQuery}</strong>
               <button
                 type="button"
                 className="modal-close"
                 onClick={() => setOpen(false)}
                 aria-label="Cerrar"
               >
-                ✕
+                <IconClose width={16} height={16} />
               </button>
             </div>
             <div className="modal-body">

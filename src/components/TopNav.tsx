@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
+import { IconLogo } from "./icons";
 
 const items = [
   { href: "/", label: "Inicio" },
@@ -17,7 +18,9 @@ export default function TopNav() {
   return (
     <nav className="topnav">
       <div className="brand">
-        <span className="logo">🧠</span>
+        <span className="logo">
+          <IconLogo />
+        </span>
         obsiAgent
       </div>
 
