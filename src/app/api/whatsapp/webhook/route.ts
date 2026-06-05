@@ -1,0 +1,91 @@
+// POST /api/whatsapp/webhook — recibe eventos de Evolution API (MESSAGES_UPSERT),
+// ejecuta RAG sobre el vault y responde por WhatsApp.
+//
+// Configura en Evolution el webhook hacia esta URL con el evento MESSAGES_UPSERT.
+import { NextRequest, NextResponse } from "next/server";
+import { answer } from "@/lib/rag";
+import { sendText, isAllowed } from "@/lib/evolution";
+
+export const runtime = "nodejs";
+
+interface EvolutionMessage {
+  key?: { remoteJid?: string; fromMe?: boolean; id?: string };
+  message?: {
+    conversation?: string;
+    extendedTextMessage?: { text?: string };
+  };
+  pushName?: string;
+}
+
+interface EvolutionWebhook {
+  event?: string;
+  instance?: string;
+  data?: EvolutionMessage | EvolutionMessage[];
+}
+
+function extractText(msg: EvolutionMessage): string {
+  return (
+    msg.message?.conversation ||
+    msg.message?.extendedTextMessage?.text ||
+    ""
+  ).trim();
+}
+
+export async function POST(req: NextRequest) {
+  let payload: EvolutionWebhook;
+  try {
+    payload = (await req.json()) as EvolutionWebhook;
+  } catch {
+    return NextResponse.json({ ok: false }, { status: 400 });
+  }
+
+  // Solo nos interesan mensajes entrantes nuevos.
+  const event = (payload.event || "").toLowerCase();
+  if (event && !event.includes("messages")) {
+    return NextResponse.json({ ok: true, ignored: "event" });
+  }
+
+  const items = Array.isArray(payload.data)
+    ? payload.data
+    : payload.data
+    ? [payload.data]
+    : [];
+
+  // Procesa de forma asíncrona; responde 200 rápido al webhook.
+  for (const msg of items) {
+    const jid = msg.key?.remoteJid ?? "";
+    const fromMe = msg.key?.fromMe ?? false;
+    const text = extractText(msg);
+
+    // Ignora: mensajes propios, grupos, vacíos.
+    if (fromMe || !text || jid.endsWith("@g.us") || !jid) continue;
+
+    const number = jid.split("@")[0];
+
+    if (!isAllowed(number)) {
+      void sendText(
+        number,
+        "Lo siento, este número no está autorizado para consultar el vault."
+      ).catch((e) => console.error("[whatsapp] send error:", e));
+      continue;
+    }
+
+    // Procesa RAG y responde (no bloqueamos la respuesta del webhook).
+    void handleQuery(number, text).catch((e) =>
+      console.error("[whatsapp] handleQuery error:", e)
+    );
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+async function handleQuery(number: string, text: string): Promise<void> {
+  const result = await answer(text);
+  const sources =
+    result.sources.length > 0
+      ? "\n\n_Fuentes: " +
+        result.sources.map((s) => s.title ?? s.id).join(", ") +
+        "_"
+      : "";
+  await sendText(number, result.answer + sources);
+}

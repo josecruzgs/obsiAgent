@@ -1,0 +1,44 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: obsiagent-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: obsi
+      POSTGRES_PASSWORD: obsi
+      POSTGRES_DB: obsiagent
+    ports:
+      # Publicado solo en localhost: la app (en el host) se conecta por 127.0.0.1
+      # y Postgres NO queda expuesto a Internet (Docker se salta ufw).
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U obsi -d obsiagent"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─────────────────────────────────────────────────────────────────────
+  # Evolution API (WhatsApp) — descomenta si NO la tienes ya corriendo.
+  # Docs: https://doc.evolution-api.com/
+  # Tras levantarla: crea una instancia, escanea el QR y configura el
+  # webhook apuntando a  http://<host-de-tu-app>:3000/api/whatsapp/webhook
+  # con el evento MESSAGES_UPSERT habilitado.
+  # ─────────────────────────────────────────────────────────────────────
+  # evolution-api:
+  #   image: atendai/evolution-api:latest
+  #   container_name: obsiagent-evolution
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - AUTHENTICATION_API_KEY=cambia-esta-clave
+  #     - DATABASE_ENABLED=true
+  #     - DATABASE_PROVIDER=postgresql
+  #     - DATABASE_CONNECTION_URI=postgresql://obsi:obsi@db:5432/evolution
+  #     - CACHE_REDIS_ENABLED=false
+  #   depends_on:
+  #     - db
+  #   volumes:
+  #     - ./evolution_instances:/evolution/instances
