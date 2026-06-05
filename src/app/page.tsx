@@ -18,6 +18,37 @@ async function getStats() {
   }
 }
 
+const ACTIONS = [
+  {
+    href: "/ingest",
+    icon: "📥",
+    bg: "rgba(108,92,231,0.12)",
+    title: "Ingerir",
+    desc: "Sube PDF/Word o pega texto. La IA genera resumen, tags y enlaces.",
+  },
+  {
+    href: "/notas",
+    icon: "📝",
+    bg: "rgba(0,184,148,0.14)",
+    title: "Notas",
+    desc: "Busca, abre, edita o borra tus notas con buscador y paginación.",
+  },
+  {
+    href: "/search",
+    icon: "🔍",
+    bg: "rgba(77,171,247,0.16)",
+    title: "Buscar",
+    desc: "Pregunta en lenguaje natural y recibe respuestas con fuentes.",
+  },
+  {
+    href: "/graph",
+    icon: "🕸️",
+    bg: "rgba(255,140,66,0.16)",
+    title: "Grafo",
+    desc: "Visualiza cómo se conectan tus notas entre sí.",
+  },
+];
+
 export default async function Home() {
   const stats = await getStats();
 
@@ -33,43 +64,43 @@ export default async function Home() {
         <div className="card">
           <p className="error">
             No se pudo conectar a la base de datos. Verifica que Postgres esté
-            corriendo (<code>docker compose up -d db</code>) y que ejecutaste{" "}
-            <code>npm run migrate</code>.
+            corriendo.
           </p>
         </div>
       )}
 
-      <div className="grid">
-        <div className="card">
-          <div style={{ fontSize: 32, fontWeight: 700 }}>{stats.notes}</div>
-          <div className="muted">notas indexadas</div>
+      <div className="stats">
+        <div className="stat">
+          <div className="stat-icon" style={{ background: "rgba(108,92,231,0.12)" }}>
+            📚
+          </div>
+          <div>
+            <div className="stat-num">{stats.notes}</div>
+            <div className="stat-label">notas indexadas</div>
+          </div>
         </div>
-        <div className="card">
-          <div style={{ fontSize: 32, fontWeight: 700 }}>{stats.links}</div>
-          <div className="muted">enlaces entre notas</div>
+        <div className="stat">
+          <div className="stat-icon" style={{ background: "rgba(0,184,148,0.14)" }}>
+            🔗
+          </div>
+          <div>
+            <div className="stat-num">{stats.links}</div>
+            <div className="stat-label">enlaces entre notas</div>
+          </div>
         </div>
       </div>
 
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>¿Por dónde empiezo?</h3>
-        <ol className="muted" style={{ lineHeight: 1.9 }}>
-          <li>
-            <Link href="/ingest">Ingerir</Link> — pega texto raw; Claude genera
-            resumen, tags y enlaces, y se guarda en tu vault de Obsidian.
-          </li>
-          <li>
-            <Link href="/graph">Grafo</Link> — visualiza cómo se conectan tus
-            notas.
-          </li>
-          <li>
-            <Link href="/search">Buscar</Link> — pregunta en lenguaje natural y
-            recibe respuestas con fuentes.
-          </li>
-          <li>
-            WhatsApp — configura Evolution API apuntando el webhook a{" "}
-            <code>/api/whatsapp/webhook</code> y pregunta desde tu teléfono.
-          </li>
-        </ol>
+      <h2 style={{ margin: "10px 0 14px" }}>¿Por dónde empiezo?</h2>
+      <div className="actions">
+        {ACTIONS.map((a) => (
+          <Link key={a.href} href={a.href} className="action">
+            <div className="action-icon" style={{ background: a.bg }}>
+              {a.icon}
+            </div>
+            <h3>{a.title}</h3>
+            <p>{a.desc}</p>
+          </Link>
+        ))}
       </div>
     </>
   );

@@ -157,8 +157,8 @@ export default function NotasPage() {
                 style={{
                   cursor: "pointer",
                   padding: "8px 6px",
-                  borderRadius: 8,
-                  background: selected === n.id ? "#20242e" : "transparent",
+                  borderRadius: 10,
+                  background: selected === n.id ? "var(--accent-soft)" : "transparent",
                 }}
               >
                 <strong>{n.title ?? n.id}</strong>
@@ -233,7 +233,7 @@ export default function NotasPage() {
                   type="button"
                   onClick={remove}
                   disabled={loading}
-                  style={{ background: "#a23" }}
+                  style={{ background: "var(--danger)", boxShadow: "none" }}
                 >
                   Borrar
                 </button>

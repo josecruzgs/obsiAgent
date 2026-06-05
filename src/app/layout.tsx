@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Nav from "@/components/Nav";
+import Sidebar from "@/components/Sidebar";
 
 export const metadata: Metadata = {
   title: "obsiAgent",
@@ -15,8 +15,21 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body>
-        <Nav />
-        <main className="container">{children}</main>
+        <div className="app">
+          <Sidebar />
+          <div className="main">
+            <header className="topbar">
+              <div>
+                <div className="topbar-greeting">Hola 👋</div>
+                <div className="topbar-sub">Tu base de conocimiento con IA</div>
+              </div>
+              <a href="/search">
+                <button type="button">🔍 Buscar</button>
+              </a>
+            </header>
+            <div className="content">{children}</div>
+          </div>
+        </div>
       </body>
     </html>
   );
