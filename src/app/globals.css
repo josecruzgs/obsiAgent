@@ -158,15 +158,53 @@ a:hover {
   box-shadow: 0 14px 40px rgba(92, 70, 224, 0.3);
 }
 .hero-search {
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
   gap: 10px;
   background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid transparent;
   border-radius: 14px;
   padding: 8px 10px 8px 14px;
   backdrop-filter: blur(6px);
   width: 100%;
+}
+/* Borde con gradiente animado (conic-gradient girando + máscara tipo "ring") */
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+.hero-search::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--angle),
+    #8b7bff,
+    #22d3ee,
+    #ec4899,
+    #8b7bff
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: spin-border 4s linear infinite;
+  pointer-events: none;
+}
+@keyframes spin-border {
+  to {
+    --angle: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-search::before {
+    animation: none;
+  }
 }
 /* Input: mayor especificidad ([type="text"]) para ganarle a la regla genérica */
 .hero-search input[type="text"] {
@@ -190,8 +228,8 @@ a:hover {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #fff;
-  color: var(--accent);
+  background: #0f172a;
+  color: #fff;
   box-shadow: none;
   padding: 9px 16px;
   font-weight: 700;
