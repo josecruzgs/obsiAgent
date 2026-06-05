@@ -151,11 +151,11 @@ a:hover {
 }
 .hero {
   background: linear-gradient(120deg, var(--hero-from), var(--hero-to));
-  border-radius: 20px;
-  padding: 0px;
+  border-radius: 14px;
+  padding: 0;
   margin-bottom: 22px;
   color: #fff;
-  box-shadow: 0 14px 40px rgba(92, 70, 224, 0.3);
+  box-shadow: none;
 }
 .hero-search {
   position: relative;
@@ -164,7 +164,7 @@ a:hover {
   align-items: center;
   gap: 10px;
   background: rgba(255, 255, 255, 0.16);
-  border: 1px solid transparent;
+  border: none;
   border-radius: 14px;
   padding: 8px 10px 8px 14px;
   backdrop-filter: blur(6px);
