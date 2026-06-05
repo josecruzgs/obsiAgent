@@ -66,14 +66,15 @@ export default function HeaderBar() {
   return (
     <div className="hero">
       <form className="hero-search" onSubmit={submit}>
-        <IconSearch />
+       
         <input
           type="text"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Pregunta a tu conocimiento… (ej. ¿qué sé del despacho?)"
-        />
+        /> 
         <button type="submit" disabled={!q.trim()}>
+          <IconSearch />
           Buscar
         </button>
       </form>

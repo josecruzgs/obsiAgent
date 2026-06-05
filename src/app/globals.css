@@ -133,6 +133,7 @@ a:hover {
   place-items: center;
   cursor: pointer;
   font-size: 17px;
+  padding: 0;
   box-shadow: none;
   transition: background 0.15s ease, transform 0.12s ease;
 }
@@ -151,7 +152,7 @@ a:hover {
 .hero {
   background: linear-gradient(120deg, var(--hero-from), var(--hero-to));
   border-radius: 20px;
-  padding: 18px;
+  padding: 0px;
   margin-bottom: 22px;
   color: #fff;
   box-shadow: 0 14px 40px rgba(92, 70, 224, 0.3);
@@ -167,14 +168,8 @@ a:hover {
   backdrop-filter: blur(6px);
   width: 100%;
 }
-.hero-search svg {
-  width: 18px;
-  height: 18px;
-  color: #fff;
-  opacity: 0.9;
-  flex-shrink: 0;
-}
-.hero-search input {
+/* Input: mayor especificidad ([type="text"]) para ganarle a la regla genérica */
+.hero-search input[type="text"] {
   flex: 1;
   background: transparent;
   border: none;
@@ -183,15 +178,27 @@ a:hover {
   font-size: 14.5px;
   padding: 6px 0;
 }
-.hero-search input::placeholder {
-  color: rgba(255, 255, 255, 0.75);
+.hero-search input[type="text"]:focus {
+  border: none;
+  box-shadow: none;
 }
+.hero-search input[type="text"]::placeholder {
+  color: rgba(255, 255, 255, 0.78);
+}
+/* Botón Buscar: icono + texto centrados; el icono hereda el color de acento */
 .hero-search button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   background: #fff;
   color: var(--accent);
   box-shadow: none;
   padding: 9px 16px;
   font-weight: 700;
+}
+.hero-search button svg {
+  width: 18px;
+  height: 18px;
 }
 .hero-search button:hover:not(:disabled) {
   transform: none;
@@ -250,6 +257,7 @@ a:hover {
   place-items: center;
   cursor: pointer;
   font-size: 14px;
+  padding: 0;
   box-shadow: none;
   flex-shrink: 0;
 }
