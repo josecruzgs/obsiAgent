@@ -5,7 +5,7 @@ services:
       context: .
     container_name: obsiagent-app
     restart: unless-stopped
-    # Lee ANTHROPIC_API_KEY, VOYAGE_API_KEY, EVOLUTION_*, APP_DOMAIN, etc. del .env
+    # Lee ANTHROPIC_API_KEY, VOYAGE_API_KEY, EVOLUTION_*, etc. del .env
     env_file:
       - .env
     environment:
@@ -13,6 +13,9 @@ services:
       # (NO localhost). Esto sobreescribe el DATABASE_URL del .env.
       DATABASE_URL: postgres://obsi:obsi@db:5432/obsiagent
       OBSIDIAN_VAULT_PATH: /data/vault
+    ports:
+      # Publicado SOLO en localhost del host: nginx (host) hará proxy_pass aquí.
+      - "127.0.0.1:3001:3000"
     volumes:
       - vault:/data/vault           # vault persistente (las notas .md viven aquí)
     depends_on:
@@ -20,15 +23,6 @@ services:
         condition: service_healthy
     networks:
       - backend                     # red privada para hablar con la DB
-    labels:
-      # ── Traefik existente del VPS (corre en red host, certresolver "letsencrypt") ──
-      # Traefik descubre este contenedor por estas etiquetas y le emite HTTPS.
-      # APP_DOMAIN se define en .env, p.ej. APP_DOMAIN=obsiagent.iagent.mx
-      - traefik.enable=true
-      - traefik.http.routers.obsiagent.rule=Host(`${APP_DOMAIN}`)
-      - traefik.http.routers.obsiagent.entrypoints=websecure
-      - traefik.http.routers.obsiagent.tls.certresolver=letsencrypt
-      - traefik.http.services.obsiagent.loadbalancer.server.port=3000
 
   # ─── Base de datos (Postgres + pgvector) ───────────────────────────────
   db:
