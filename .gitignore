@@ -28,8 +28,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
-# vault local de pruebas (opcional)
+# vault local / notas (NUNCA subir contenido de notas al repo)
 /vault-dev/
+/vault-local/
+/vault/
 
 # docker volumes
 /pgdata/
