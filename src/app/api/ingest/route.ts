@@ -4,6 +4,7 @@ import { z } from "zod";
 import { digestDocument } from "@/lib/claude";
 import { listNoteTitles, slugify, writeNote, readNote } from "@/lib/vault";
 import { indexNote } from "@/lib/indexer";
+import { rebuildMoc } from "@/lib/moc";
 
 export const runtime = "nodejs";
 
@@ -38,6 +39,8 @@ export async function POST(req: NextRequest) {
     // 3. Indexar en la DB (embedding Voyage + enlaces).
     const note = await readNote(id);
     if (note) await indexNote(note);
+
+    await rebuildMoc().catch((e) => console.error("[ingest] rebuildMoc:", e));
 
     return NextResponse.json({
       ok: true,

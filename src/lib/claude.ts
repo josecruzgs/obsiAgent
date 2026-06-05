@@ -104,37 +104,56 @@ Reglas:
   return parsed;
 }
 
-/** Responde una pregunta usando los fragmentos recuperados como contexto (RAG). */
+/**
+ * Responde una pregunta usando los fragmentos recuperados como contexto (RAG).
+ * `overview` (opcional) es el índice/MOC del vault: da panorama para preguntas
+ * amplias aunque no haya notas detalladas relevantes.
+ */
 export async function answerWithContext(
   question: string,
-  notes: RetrievedNote[]
+  notes: RetrievedNote[],
+  overview?: string
 ): Promise<string> {
-  if (notes.length === 0) {
+  if (notes.length === 0 && !overview) {
     return "No encontré información relevante en el vault para responder eso.";
   }
 
-  const context = notes
-    .map(
-      (n, i) =>
-        `[${i + 1}] ${n.title ?? n.id}\n${(n.content ?? n.summary ?? "").slice(
-          0,
-          4000
-        )}`
-    )
-    .join("\n\n---\n\n");
+  const parts: string[] = [];
+  if (overview) {
+    parts.push(
+      `Índice general del vault (panorama de TODAS las notas, úsalo para preguntas amplias):\n${overview.slice(
+        0,
+        8000
+      )}`
+    );
+  }
+  if (notes.length > 0) {
+    const context = notes
+      .map(
+        (n, i) =>
+          `[${i + 1}] ${n.title ?? n.id}\n${(n.content ?? n.summary ?? "").slice(
+            0,
+            4000
+          )}`
+      )
+      .join("\n\n---\n\n");
+    parts.push(`Notas relevantes con detalle:\n\n${context}`);
+  }
 
   const msg = await client().messages.create({
     model: env.anthropicAnswerModel,
     max_tokens: 1024,
     system:
-      "Eres un asistente que responde preguntas basándote EXCLUSIVAMENTE en las " +
-      "notas proporcionadas del vault del usuario. Responde en español, de forma " +
-      "concisa. Cita las notas usadas con su número entre corchetes, p. ej. [1]. " +
-      "Si la respuesta no está en las notas, dilo claramente.",
+      "Eres un asistente que responde preguntas basándote EXCLUSIVAMENTE en la " +
+      "información del vault del usuario que se te proporciona (índice general y/o " +
+      "notas con detalle). Responde en español, de forma concisa. Cuando uses una " +
+      "nota con detalle, cítala con su número entre corchetes, p. ej. [1]. Para " +
+      "preguntas amplias, apóyate en el índice general. Si la respuesta no está en " +
+      "el material, dilo claramente.",
     messages: [
       {
         role: "user",
-        content: `Notas del vault:\n\n${context}\n\n---\n\nPregunta: ${question}`,
+        content: `${parts.join("\n\n====\n\n")}\n\n---\n\nPregunta: ${question}`,
       },
     ],
   });

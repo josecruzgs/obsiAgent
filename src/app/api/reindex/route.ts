@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isImportAuthorized } from "@/lib/importAuth";
 import { readAllNotes } from "@/lib/vault";
 import { indexNote } from "@/lib/indexer";
+import { rebuildMoc } from "@/lib/moc";
 
 export const runtime = "nodejs";
 
@@ -34,6 +35,8 @@ export async function POST(req: NextRequest) {
       });
     }
   }
+
+  await rebuildMoc().catch((e) => console.error("[reindex] rebuildMoc:", e));
 
   return NextResponse.json({ ok: true, total: notes.length, indexadas, errores });
 }

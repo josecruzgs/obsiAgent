@@ -20,6 +20,7 @@ import {
   readNote,
 } from "@/lib/vault";
 import { indexNote } from "@/lib/indexer";
+import { rebuildMoc } from "@/lib/moc";
 
 export const runtime = "nodejs";
 
@@ -119,6 +120,8 @@ export async function POST(req: NextRequest) {
         .catch(() => {});
     }
   }
+
+  await rebuildMoc().catch((e) => console.error("[bulk-import] rebuildMoc:", e));
 
   return NextResponse.json({
     ok: true,

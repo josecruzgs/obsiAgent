@@ -12,6 +12,11 @@ function vaultDir(): string {
   return env.vaultPath;
 }
 
+// Id de la nota índice (MOC) auto-generada. Las notas cuyo nombre empieza con
+// "_" se consideran "de sistema": no se listan ni se indexan como notas
+// normales, pero se pueden leer directamente por id (readNote).
+export const MOC_ID = "_indice";
+
 /** Convierte un título libre en un slug/nombre de archivo seguro (estilo Obsidian). */
 export function slugify(title: string): string {
   return title
@@ -50,7 +55,11 @@ export async function listNoteIds(): Promise<string[]> {
       if (e.isDirectory()) {
         if (e.name === ".obsidian" || e.name === ".trash") continue;
         await walk(full);
-      } else if (e.isFile() && e.name.endsWith(".md")) {
+      } else if (
+        e.isFile() &&
+        e.name.endsWith(".md") &&
+        !e.name.startsWith("_") // omite notas de sistema (p.ej. el índice _indice.md)
+      ) {
         ids.push(e.name.replace(/\.md$/, ""));
       }
     }

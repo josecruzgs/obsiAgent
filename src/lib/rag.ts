@@ -2,6 +2,7 @@
 import { query, toVectorLiteral } from "./db";
 import { embedQuery } from "./embeddings";
 import { answerWithContext } from "./claude";
+import { readNote, MOC_ID } from "./vault";
 import type { RagAnswer, RetrievedNote } from "./types";
 
 interface RetrieveRow {
@@ -36,10 +37,13 @@ export async function retrieve(
   }));
 }
 
-/** Recupera contexto y genera una respuesta citada. */
+/** Recupera contexto (top-K + índice general) y genera una respuesta citada. */
 export async function answer(queryText: string, k = 5): Promise<RagAnswer> {
-  const notes = await retrieve(queryText, k);
-  const text = await answerWithContext(queryText, notes);
+  const [notes, moc] = await Promise.all([
+    retrieve(queryText, k),
+    readNote(MOC_ID).catch(() => null), // índice general (panorama del vault)
+  ]);
+  const text = await answerWithContext(queryText, notes, moc?.body);
   return {
     answer: text,
     sources: notes.map((n) => ({ id: n.id, title: n.title })),

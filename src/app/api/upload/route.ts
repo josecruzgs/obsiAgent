@@ -12,6 +12,7 @@ import {
   readNote,
 } from "@/lib/vault";
 import { indexNote } from "@/lib/indexer";
+import { rebuildMoc } from "@/lib/moc";
 
 export const runtime = "nodejs";
 
@@ -92,6 +93,8 @@ export async function POST(req: NextRequest) {
       console.error(`[upload] ERROR ${file.name}: ${error}`);
     }
   }
+
+  await rebuildMoc().catch((e) => console.error("[upload] rebuildMoc:", e));
 
   return NextResponse.json({
     ok: true,
