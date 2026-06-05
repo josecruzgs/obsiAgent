@@ -100,6 +100,16 @@ export async function readAllNotes(): Promise<VaultNote[]> {
   return notes.filter((n): n is VaultNote => n !== null);
 }
 
+/** Borra el archivo .md de una nota del vault. Devuelve true si existía. */
+export async function deleteNote(id: string): Promise<boolean> {
+  try {
+    await fs.unlink(resolvePath(id));
+    return true;
+  } catch {
+    return false; // el archivo puede no existir (p.ej. nota huérfana solo en DB)
+  }
+}
+
 export interface WriteNoteInput {
   id: string;
   frontmatter: NoteFrontmatter;

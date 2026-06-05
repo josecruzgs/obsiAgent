@@ -139,6 +139,22 @@ button:disabled {
   gap: 12px;
 }
 
+/* Página Notas: lista + editor */
+.notas-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.nota-item:hover {
+  background: #20242e !important;
+}
+@media (max-width: 720px) {
+  .notas-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Respuesta RAG renderizada desde Markdown */
 .answer {
   line-height: 1.6;
