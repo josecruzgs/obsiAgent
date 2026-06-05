@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 interface SearchResult {
   ok: boolean;
@@ -60,9 +61,9 @@ export default function SearchPage() {
         <div className="card">
           {result.ok ? (
             <>
-              <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
-                {result.answer}
-              </p>
+              <div className="answer">
+                <ReactMarkdown>{result.answer}</ReactMarkdown>
+              </div>
               {result.sources && result.sources.length > 0 && (
                 <p className="muted" style={{ marginTop: 12 }}>
                   Fuentes:{" "}
