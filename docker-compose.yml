@@ -32,6 +32,9 @@ services:
     image: pgvector/pgvector:pg16
     container_name: obsiagent-db
     restart: unless-stopped
+    ports:
+      # Solo loopback del VPS (para túnel SSH desde tu PC). NO expuesto a Internet.
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: obsi
       POSTGRES_PASSWORD: obsi
