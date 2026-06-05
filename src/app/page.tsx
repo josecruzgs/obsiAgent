@@ -34,13 +34,6 @@ const ACTIONS = [
     desc: "Busca, abre, edita o borra tus notas con buscador y paginación.",
   },
   {
-    href: "/search",
-    icon: "🔍",
-    bg: "rgba(77,171,247,0.16)",
-    title: "Buscar",
-    desc: "Pregunta en lenguaje natural y recibe respuestas con fuentes.",
-  },
-  {
     href: "/graph",
     icon: "🕸️",
     bg: "rgba(255,140,66,0.16)",

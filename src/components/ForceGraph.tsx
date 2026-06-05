@@ -87,8 +87,12 @@ export default function ForceGraph({ data }: Props) {
         linkWidth={1}
         nodeLabel={(n: GNode) => n.title ?? String(n.id ?? "")}
         onNodeClick={(n: GNode) => {
-          if (n.id != null)
-            window.location.href = `/search?note=${encodeURIComponent(String(n.id))}`;
+          // Abre el modal de búsqueda (en el header) con el título de la nota.
+          const queryText = n.title ?? String(n.id ?? "");
+          if (queryText)
+            window.dispatchEvent(
+              new CustomEvent("obsi-search", { detail: queryText })
+            );
         }}
         nodeCanvasObjectMode={() => "after"}
         nodeCanvasObject={(
