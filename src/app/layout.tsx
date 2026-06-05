@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
+import { Open_Sans } from "next/font/google";
 import "./globals.css";
 import TopNav from "@/components/TopNav";
 import HeaderBar from "@/components/HeaderBar";
+
+const openSans = Open_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "obsiAgent",
@@ -17,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" data-theme="dark">
+    <html lang="es" data-theme="dark" className={openSans.variable}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
