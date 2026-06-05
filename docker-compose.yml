@@ -17,7 +17,10 @@ services:
       # Publicado SOLO en localhost del host: nginx (host) hará proxy_pass aquí.
       - "127.0.0.1:3001:3000"
     volumes:
-      - vault:/data/vault           # vault persistente (las notas .md viven aquí)
+      # Vault en una CARPETA del host: súbele notas por SFTP/scp/git y persiste.
+      - /srv/obsiagent/vault:/data/vault
+      # Bandeja de entrada para importación masiva (/api/bulk-import).
+      - /srv/obsiagent/inbox:/data/inbox
     depends_on:
       db:
         condition: service_healthy
@@ -48,7 +51,6 @@ services:
 
 volumes:
   pgdata:
-  vault:
 
 networks:
   backend:

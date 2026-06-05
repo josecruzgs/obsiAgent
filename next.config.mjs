@@ -5,7 +5,7 @@ const nextConfig = {
   // ideal para empaquetar en una imagen Docker pequeña.
   output: "standalone",
   // react-force-graph usa APIs de navegador; lo cargamos solo en cliente (dynamic import).
-  serverExternalPackages: ["pg"],
+  serverExternalPackages: ["pg", "mammoth", "pdf-parse"],
   // Fija la raíz del workspace en este proyecto (hay otro lockfile en el HOME).
   outputFileTracingRoot: import.meta.dirname,
 };

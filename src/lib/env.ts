@@ -25,6 +25,15 @@ export const env = {
     return required("OBSIDIAN_VAULT_PATH");
   },
 
+  // Bandeja de entrada para la importación masiva (/api/bulk-import).
+  get inboxPath() {
+    return optional("INBOX_PATH", "/data/inbox");
+  },
+  // Token requerido para disparar /api/bulk-import y /api/reindex.
+  get bulkImportToken() {
+    return optional("BULK_IMPORT_TOKEN");
+  },
+
   get anthropicApiKey() {
     return required("ANTHROPIC_API_KEY");
   },
