@@ -20,12 +20,11 @@ services:
         condition: service_healthy
     networks:
       - backend                     # red privada para hablar con la DB
-      - traefik-proxy               # red de Traefik (HTTPS público)
     labels:
-      # ── Traefik (Hostinger): HTTPS automático con Let's Encrypt ──
-      # APP_DOMAIN se define en .env, p.ej. APP_DOMAIN=obsiagent.tudominio.com
+      # ── Traefik existente del VPS (corre en red host, certresolver "letsencrypt") ──
+      # Traefik descubre este contenedor por estas etiquetas y le emite HTTPS.
+      # APP_DOMAIN se define en .env, p.ej. APP_DOMAIN=obsiagent.iagent.mx
       - traefik.enable=true
-      - traefik.docker.network=traefik-proxy
       - traefik.http.routers.obsiagent.rule=Host(`${APP_DOMAIN}`)
       - traefik.http.routers.obsiagent.entrypoints=websecure
       - traefik.http.routers.obsiagent.tls.certresolver=letsencrypt
@@ -59,6 +58,3 @@ volumes:
 
 networks:
   backend:
-  # Red creada por Traefik al desplegarlo desde el Docker Manager de Hostinger.
-  traefik-proxy:
-    external: true
