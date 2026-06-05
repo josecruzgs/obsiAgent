@@ -99,6 +99,25 @@ export function IconClose(p: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconCloudUpload(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...svgProps(p)}>
+      <path d="M7 18h10a3.5 3.5 0 0 0 .5-6.96 5.5 5.5 0 0 0-10.58-1.4A3.75 3.75 0 0 0 7 18Z" />
+      <path d="M12 20v-7" />
+      <path d="m9.2 15 2.8-2.8 2.8 2.8" />
+    </svg>
+  );
+}
+
+export function IconEdit(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...svgProps(p)}>
+      <path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3Z" />
+      <path d="m13.5 6.5 3 3" />
+    </svg>
+  );
+}
+
 // Marca de la app (sparkle de 4 puntas, estilo "IA").
 export function IconLogo(p: SVGProps<SVGSVGElement>) {
   return (

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { IconUpload, IconEdit, IconCloudUpload, IconClose } from "@/components/icons";
 
 interface IngestResult {
   ok: boolean;
@@ -33,6 +34,15 @@ export default function IngestPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [upload, setUpload] = useState<UploadResponse | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function addFiles(list: FileList | null) {
+    if (list && list.length) setFiles((prev) => [...prev, ...Array.from(list)]);
+  }
+  function removeFile(idx: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
@@ -92,23 +102,72 @@ export default function IngestPage() {
 
       {/* ── Subir archivos ── */}
       <form onSubmit={handleUpload} className="card">
-        <h2 style={{ marginTop: 0 }}>📎 Subir archivos</h2>
-        <label htmlFor="files">PDF, Word (.docx), .txt o .md — varios a la vez</label>
+        <h2 className="card-title">
+          <IconUpload width={18} height={18} /> Subir archivos
+        </h2>
+
         <input
-          id="files"
+          ref={fileInputRef}
           type="file"
           multiple
           accept=".pdf,.docx,.txt,.md,.markdown"
-          onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+          style={{ display: "none" }}
+          onChange={(e) => {
+            addFiles(e.target.files);
+            e.target.value = ""; // permite re-seleccionar el mismo archivo
+          }}
         />
+
+        <div
+          className={`dropzone${dragging ? " drag" : ""}`}
+          role="button"
+          tabIndex={0}
+          onClick={() => fileInputRef.current?.click()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            addFiles(e.dataTransfer.files);
+          }}
+        >
+          <span className="dropzone-icon">
+            <IconCloudUpload />
+          </span>
+          <div className="dropzone-text">
+            <strong>Arrastra y suelta tus archivos</strong>
+            <span>o haz clic para seleccionar · PDF, Word, TXT, MD</span>
+          </div>
+        </div>
+
         {files.length > 0 && (
-          <p className="muted" style={{ marginTop: 10 }}>
-            {files.length} archivo(s): {files.map((f) => f.name).join(", ")}
-          </p>
+          <div className="file-chips">
+            {files.map((f, i) => (
+              <span key={i} className="file-chip">
+                {f.name}
+                <button
+                  type="button"
+                  onClick={() => removeFile(i)}
+                  aria-label={`Quitar ${f.name}`}
+                >
+                  <IconClose width={14} height={14} />
+                </button>
+              </span>
+            ))}
+          </div>
         )}
+
         <div style={{ height: 16 }} />
         <button type="submit" disabled={uploading || files.length === 0}>
-          {uploading ? "Procesando..." : "Subir y procesar"}
+          {uploading
+            ? "Procesando…"
+            : `Subir y procesar${files.length ? ` (${files.length})` : ""}`}
         </button>
         {uploading && (
           <p className="muted" style={{ marginTop: 12 }}>
@@ -146,7 +205,9 @@ export default function IngestPage() {
 
       {/* ── Pegar texto ── */}
       <form onSubmit={handleText} className="card">
-        <h2 style={{ marginTop: 0 }}>✍️ O pegar texto</h2>
+        <h2 className="card-title">
+          <IconEdit width={18} height={18} /> O pegar texto
+        </h2>
         <label htmlFor="title">Título (opcional — la IA puede mejorarlo)</label>
         <input
           id="title"
