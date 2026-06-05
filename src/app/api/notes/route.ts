@@ -17,10 +17,31 @@ export async function GET(req: NextRequest) {
 
   if (id) {
     const note = await readNote(id);
-    if (!note) {
-      return NextResponse.json({ ok: false, error: "No encontrada" }, { status: 404 });
+    if (note) return NextResponse.json({ ok: true, note });
+
+    // Respaldo: si no existe el archivo local (p.ej. app local sin el vault, o
+    // nota indexada sin .md), reconstruye la nota desde la DB (que guarda content).
+    const [row] = await query<NoteRecord>(
+      `select id, title, summary, tags, content from notes where id = $1`,
+      [id]
+    );
+    if (row) {
+      return NextResponse.json({
+        ok: true,
+        fromDb: true,
+        note: {
+          id: row.id,
+          path: `${row.id}.md`,
+          frontmatter: {
+            title: row.title ?? row.id,
+            summary: row.summary ?? "",
+            tags: row.tags ?? [],
+          },
+          body: row.content ?? "",
+        },
+      });
     }
-    return NextResponse.json({ ok: true, note });
+    return NextResponse.json({ ok: false, error: "No encontrada" }, { status: 404 });
   }
 
   // Listado con búsqueda (título/resumen/tags) + paginación.
