@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
+import TopNav from "@/components/TopNav";
+import HeaderBar from "@/components/HeaderBar";
 
 export const metadata: Metadata = {
   title: "obsiAgent",
   description: "Plataforma de conocimiento sobre Obsidian con IA y WhatsApp",
 };
+
+// Aplica el tema guardado antes del primer pintado (evita parpadeo).
+const themeInit = `(function(){try{var t=localStorage.getItem('theme')||'dark';document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='dark';}})();`;
 
 export default function RootLayout({
   children,
@@ -13,23 +17,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
+    <html lang="es" data-theme="dark">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
+      </head>
       <body>
-        <div className="app">
-          <Sidebar />
-          <div className="main">
-            <header className="topbar">
-              <div>
-                <div className="topbar-greeting">Hola 👋</div>
-                <div className="topbar-sub">Tu base de conocimiento con IA</div>
-              </div>
-              <a href="/search">
-                <button type="button">🔍 Buscar</button>
-              </a>
-            </header>
-            <div className="content">{children}</div>
-          </div>
-        </div>
+        <TopNav />
+        <main className="shell">
+          <HeaderBar />
+          <div className="content">{children}</div>
+        </main>
       </body>
     </html>
   );

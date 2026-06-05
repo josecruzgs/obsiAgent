@@ -71,22 +71,24 @@ export default async function Home() {
 
       <div className="stats">
         <div className="stat">
-          <div className="stat-icon" style={{ background: "rgba(108,92,231,0.12)" }}>
-            📚
+          <div className="stat-head">
+            <span className="stat-icon" style={{ background: "rgba(108,92,231,0.16)" }}>
+              📚
+            </span>
+            Notas indexadas
           </div>
-          <div>
-            <div className="stat-num">{stats.notes}</div>
-            <div className="stat-label">notas indexadas</div>
-          </div>
+          <div className="stat-num">{stats.notes}</div>
+          <div className="stat-foot">documentos en tu base de conocimiento</div>
         </div>
         <div className="stat">
-          <div className="stat-icon" style={{ background: "rgba(0,184,148,0.14)" }}>
-            🔗
+          <div className="stat-head">
+            <span className="stat-icon" style={{ background: "rgba(0,184,148,0.18)" }}>
+              🔗
+            </span>
+            Enlaces entre notas
           </div>
-          <div>
-            <div className="stat-num">{stats.links}</div>
-            <div className="stat-label">enlaces entre notas</div>
-          </div>
+          <div className="stat-num">{stats.links}</div>
+          <div className="stat-foot">conexiones detectadas por la IA</div>
         </div>
       </div>
 

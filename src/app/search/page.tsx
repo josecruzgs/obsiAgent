@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 
 interface SearchResult {
@@ -10,20 +11,21 @@ interface SearchResult {
   error?: string;
 }
 
-export default function SearchPage() {
+function SearchInner() {
+  const params = useSearchParams();
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SearchResult | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  const runSearch = useCallback(async (question: string) => {
+    if (!question.trim()) return;
     setLoading(true);
     setResult(null);
     try {
       const res = await fetch("/api/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ q }),
+        body: JSON.stringify({ q: question }),
       });
       setResult(await res.json());
     } catch (err) {
@@ -31,14 +33,28 @@ export default function SearchPage() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Si llega ?q= (desde el buscador del header), ejecuta la búsqueda.
+  useEffect(() => {
+    const urlQ = params.get("q");
+    if (urlQ) {
+      setQ(urlQ);
+      runSearch(urlQ);
+    }
+  }, [params, runSearch]);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    runSearch(q);
   }
 
   return (
     <>
       <h1>Buscar en tu conocimiento</h1>
       <p className="subtitle">
-        Pregunta en lenguaje natural. Se buscan las notas más relevantes
-        (búsqueda semántica) y Claude responde citando fuentes.
+        Pregunta en lenguaje natural. Se buscan las notas más relevantes (búsqueda
+        semántica) y Claude responde citando fuentes.
       </p>
 
       <form onSubmit={handleSubmit} className="card">
@@ -66,8 +82,7 @@ export default function SearchPage() {
               </div>
               {result.sources && result.sources.length > 0 && (
                 <p className="muted" style={{ marginTop: 12 }}>
-                  Fuentes:{" "}
-                  {result.sources.map((s) => s.title ?? s.id).join(" · ")}
+                  Fuentes: {result.sources.map((s) => s.title ?? s.id).join(" · ")}
                 </p>
               )}
             </>
@@ -77,5 +92,13 @@ export default function SearchPage() {
         </div>
       )}
     </>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<p className="muted">Cargando…</p>}>
+      <SearchInner />
+    </Suspense>
   );
 }
