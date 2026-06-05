@@ -23,11 +23,37 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, note });
   }
 
+  // Listado con búsqueda (título/resumen/tags) + paginación.
+  const q = (req.nextUrl.searchParams.get("q") || "").trim();
+  const limit = Math.min(
+    Math.max(parseInt(req.nextUrl.searchParams.get("limit") || "20", 10) || 20, 1),
+    100
+  );
+  const offset = Math.max(
+    parseInt(req.nextUrl.searchParams.get("offset") || "0", 10) || 0,
+    0
+  );
+
+  const where = q
+    ? `where title ilike $1 or summary ilike $1 or array_to_string(tags, ' ') ilike $1`
+    : "";
+  const filterParams = q ? [`%${q}%`] : [];
+
+  const totalRows = await query<{ c: number }>(
+    `select count(*)::int as c from notes ${where}`,
+    filterParams
+  );
+  const total = totalRows[0]?.c ?? 0;
+
   const rows = await query<NoteRecord>(
     `select id, title, summary, tags, updated_at
-     from notes order by updated_at desc limit 500`
+     from notes ${where}
+     order by updated_at desc
+     limit $${filterParams.length + 1} offset $${filterParams.length + 2}`,
+    [...filterParams, limit, offset]
   );
-  return NextResponse.json({ ok: true, notes: rows });
+
+  return NextResponse.json({ ok: true, notes: rows, total, limit, offset });
 }
 
 const updateSchema = z.object({

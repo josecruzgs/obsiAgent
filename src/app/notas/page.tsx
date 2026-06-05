@@ -16,8 +16,14 @@ interface NoteDetail {
   body: string;
 }
 
+const PAGE_SIZE = 20;
+
 export default function NotasPage() {
   const [notes, setNotes] = useState<NoteListItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [q, setQ] = useState("");
+  const [page, setPage] = useState(0);
+
   const [selected, setSelected] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
@@ -26,15 +32,30 @@ export default function NotasPage() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  const loadList = useCallback(async () => {
-    const res = await fetch("/api/notes");
+  const loadList = useCallback(async (query: string, p: number) => {
+    const params = new URLSearchParams({
+      q: query,
+      limit: String(PAGE_SIZE),
+      offset: String(p * PAGE_SIZE),
+    });
+    const res = await fetch(`/api/notes?${params.toString()}`);
     const data = await res.json();
-    if (data.ok) setNotes(data.notes);
+    if (data.ok) {
+      setNotes(data.notes);
+      setTotal(data.total ?? data.notes.length);
+    }
   }, []);
 
+  // Refetch al cambiar búsqueda o página (con pequeño debounce para el typing).
   useEffect(() => {
-    loadList();
-  }, [loadList]);
+    const t = setTimeout(() => loadList(q, page), 250);
+    return () => clearTimeout(t);
+  }, [q, page, loadList]);
+
+  function onSearchChange(value: string) {
+    setQ(value);
+    setPage(0); // vuelve a la primera página al buscar
+  }
 
   async function openNote(id: string) {
     setMsg(null);
@@ -48,7 +69,6 @@ export default function NotasPage() {
       setTags((n.frontmatter.tags ?? []).join(", "));
       setBody(n.body ?? "");
     } else {
-      // Nota huérfana (en DB pero sin archivo): solo permitir borrarla.
       setTitle("");
       setSummary("");
       setTags("");
@@ -69,7 +89,7 @@ export default function NotasPage() {
       });
       const data = await res.json();
       setMsg(data.ok ? "✓ Guardado e indexado." : `✗ ${data.error}`);
-      if (data.ok) await loadList();
+      if (data.ok) await loadList(q, page);
     } catch (err) {
       setMsg(`✗ ${String(err)}`);
     } finally {
@@ -93,7 +113,7 @@ export default function NotasPage() {
         setSummary("");
         setTags("");
         setBody("");
-        await loadList();
+        await loadList(q, page);
         setMsg("✓ Nota borrada.");
       } else {
         setMsg(`✗ ${data.error}`);
@@ -105,43 +125,87 @@ export default function NotasPage() {
     }
   }
 
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
   return (
     <>
       <h1>Notas</h1>
       <p className="subtitle">
-        Lista de todas tus notas. Haz clic en una para ver, editar o borrar (útil
-        si subiste algo por error). Al guardar se reindexa automáticamente.
+        Busca, abre, edita o borra tus notas (útil si subiste algo por error). Al
+        guardar se reindexa automáticamente.
       </p>
 
       <div className="notas-layout">
-        {/* Lista */}
-        <div className="card" style={{ maxHeight: 520, overflowY: "auto" }}>
-          <p className="muted" style={{ marginTop: 0 }}>
-            {notes.length} nota(s)
+        {/* Lista + búsqueda + paginación */}
+        <div className="card">
+          <input
+            type="text"
+            value={q}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="🔍 Buscar por título, resumen o tag…"
+          />
+          <p className="muted" style={{ fontSize: 13, margin: "10px 0" }}>
+            {total} nota(s){q ? ` para “${q}”` : ""}
           </p>
-          {notes.map((n) => (
+
+          <div style={{ maxHeight: 440, overflowY: "auto" }}>
+            {notes.map((n) => (
+              <div
+                key={n.id}
+                onClick={() => openNote(n.id)}
+                className="nota-item"
+                style={{
+                  cursor: "pointer",
+                  padding: "8px 6px",
+                  borderRadius: 8,
+                  background: selected === n.id ? "#20242e" : "transparent",
+                }}
+              >
+                <strong>{n.title ?? n.id}</strong>
+                {n.summary && (
+                  <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>
+                    {n.summary.slice(0, 80)}
+                    {n.summary.length > 80 ? "…" : ""}
+                  </div>
+                )}
+              </div>
+            ))}
+            {notes.length === 0 && (
+              <p className="muted">
+                {q ? "Sin resultados." : "Aún no hay notas. Sube algo en “Ingerir”."}
+              </p>
+            )}
+          </div>
+
+          {/* Paginación */}
+          {totalPages > 1 && (
             <div
-              key={n.id}
-              onClick={() => openNote(n.id)}
-              className="nota-item"
               style={{
-                cursor: "pointer",
-                padding: "8px 6px",
-                borderRadius: 8,
-                background: selected === n.id ? "#20242e" : "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginTop: 12,
+                gap: 8,
               }}
             >
-              <strong>{n.title ?? n.id}</strong>
-              {n.summary && (
-                <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>
-                  {n.summary.slice(0, 90)}
-                  {n.summary.length > 90 ? "…" : ""}
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+              >
+                ← Anterior
+              </button>
+              <span className="muted" style={{ fontSize: 13 }}>
+                Página {page + 1} de {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+              >
+                Siguiente →
+              </button>
             </div>
-          ))}
-          {notes.length === 0 && (
-            <p className="muted">Aún no hay notas. Sube algo en “Ingerir”.</p>
           )}
         </div>
 
