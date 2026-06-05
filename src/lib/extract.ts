@@ -1,4 +1,4 @@
-// Extracción de texto plano de archivos para la importación masiva.
+// Extracción de texto plano de archivos para subida web e importación masiva.
 // Soporta Markdown/texto directo, .docx (mammoth) y .pdf (pdf-parse v1).
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -13,24 +13,31 @@ export function isSupported(file: string): boolean {
   return SUPPORTED_EXTENSIONS.includes(path.extname(file).toLowerCase());
 }
 
-/** Devuelve el texto plano de un archivo. Lanza si el formato no se soporta. */
-export async function extractText(filePath: string): Promise<string> {
-  const ext = path.extname(filePath).toLowerCase();
+/** Extrae texto a partir de un buffer en memoria (subida web). */
+export async function extractTextFromBuffer(
+  filename: string,
+  data: Buffer
+): Promise<string> {
+  const ext = path.extname(filename).toLowerCase();
   switch (ext) {
     case ".md":
     case ".markdown":
     case ".txt":
-      return (await fs.readFile(filePath, "utf8")).trim();
+      return data.toString("utf8").trim();
     case ".docx": {
-      const { value } = await extractRawText({ path: filePath });
+      const { value } = await extractRawText({ buffer: data });
       return value.trim();
     }
     case ".pdf": {
-      const data = await fs.readFile(filePath);
       const parsed = await pdf(data);
       return (parsed.text || "").trim();
     }
     default:
       throw new Error(`Formato no soportado: ${ext}`);
   }
+}
+
+/** Extrae texto de un archivo en disco (importación masiva desde el inbox). */
+export async function extractText(filePath: string): Promise<string> {
+  return extractTextFromBuffer(filePath, await fs.readFile(filePath));
 }
