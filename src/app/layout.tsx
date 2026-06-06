@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Open_Sans } from "next/font/google";
+import { Merriweather } from "next/font/google";
 import "./globals.css";
 import TopNav from "@/components/TopNav";
 import HeaderBar from "@/components/HeaderBar";
 
-const openSans = Open_Sans({
+const merriweather = Merriweather({
   subsets: ["latin"],
+  weight: ["300", "400", "700", "900"],
   variable: "--font-sans",
   display: "swap",
 });
@@ -24,11 +25,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" data-theme="dark" className={openSans.variable}>
+    <html lang="es" data-theme="dark" className={merriweather.variable}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
       <body>
+        {/* Fondo animado (rayos + núcleo brillante). Decorativo, sin interacción. */}
+        <div className="page-bg" aria-hidden="true">
+          <div className="glows">
+            <div className="core-cloud" />
+          </div>
+        </div>
         <TopNav />
         <main className="shell">
           <HeaderBar />

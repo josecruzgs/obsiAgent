@@ -46,11 +46,18 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   transition: background 0.2s ease, color 0.2s ease;
+}
+/* El color base va en <html>; <body> transparente para que se vea la capa
+   .page-bg (fondo animado, z-index -1) detrás del contenido. */
+html {
+  background: var(--bg);
+}
+body {
+  background: transparent;
 }
 
 a {
@@ -59,6 +66,151 @@ a {
 }
 a:hover {
   text-decoration: underline;
+}
+
+/* ─── Fondo animado (rayos de luz + núcleo brillante) ─────────────────── */
+/* Capa fija detrás de todo el contenido. NO usa overflow:hidden global para
+   no romper el scroll de la página; solo recorta dentro de su propia caja. */
+.page-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* El gradiente oscuro de base solo en modo oscuro (el color-dodge de los
+   rayos necesita un fondo oscuro para verse). En claro queda el --bg normal. */
+html[data-theme="dark"] .page-bg {
+  background: radial-gradient(circle at 50% 45%, #2c2f3e, #0a0f1c);
+}
+/* Cuadrícula sutil (look tech/retro) siempre visible sobre el fondo animado.
+   Va en ::after con z-index mayor que los rayos (z-index 2) para quedar
+   por encima de ellos, pero toda la capa .page-bg sigue detrás del contenido. */
+html[data-theme="dark"] .page-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background-image: linear-gradient(
+      to right,
+      rgba(180, 200, 255, 0.06) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, rgba(180, 200, 255, 0.06) 1px, transparent 1px);
+  background-size: 38px 38px;
+  background-position: center center;
+}
+html:not([data-theme="dark"]) .glows,
+html:not([data-theme="dark"]) .core-cloud {
+  display: none; /* en modo claro el efecto no aporta y restaría legibilidad */
+}
+
+.glows {
+  position: relative;
+}
+/* Rayos de luz (pseudo-elementos ::before / ::after) */
+.glows::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  bottom: 220px;
+  left: -130px;
+  display: block;
+  width: 405px;
+  height: 397px;
+  background-image: url("/glow/light-beam-0.png");
+  background-size: 405px 397px;
+  mix-blend-mode: color-dodge;
+  transform-origin: bottom right;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .glows::before {
+    opacity: 0;
+    animation: 23s ease infinite forwards alternate glow-rotate,
+      12s ease infinite forwards alternate glow-blink;
+  }
+}
+.glows::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  bottom: 200px;
+  left: -100px;
+  display: block;
+  width: 415px;
+  height: 531px;
+  background-image: url("/glow/light-beam-1.png");
+  background-size: 415px 531px;
+  mix-blend-mode: color-dodge;
+  transform-origin: 90% 90%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .glows::after {
+    opacity: 0;
+    animation: 28s ease 2s infinite forwards alternate glow-rotate,
+      14s ease 2s infinite forwards alternate glow-blink;
+  }
+}
+@keyframes glow-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+@keyframes glow-blink {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+/* Núcleo brillante central */
+.core-cloud {
+  display: block;
+  width: 496px;
+  height: 496px;
+  background-image: url("/glow/glow-core.png");
+  background-size: 496px 496px;
+  background-repeat: no-repeat;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .core-cloud {
+    animation: 30s cubic-bezier(0.44, 0.21, 0.68, 0.89) infinite forwards
+        alternate rotate-core,
+      6s ease infinite forwards alternate hue-rotate;
+  }
+}
+@keyframes rotate-core {
+  0% {
+    transform: rotate(0deg) scale(0.9);
+  }
+  50% {
+    transform: rotate(90deg) scale(1.2);
+  }
+  100% {
+    transform: rotate(180deg) scale(0.9);
+  }
+}
+@keyframes hue-rotate {
+  from {
+    filter: hue-rotate(0deg);
+  }
+  to {
+    filter: hue-rotate(70deg);
+  }
 }
 
 /* ─── Navbar superior con pills ──────────────────────────────────────── */
@@ -70,8 +222,8 @@ a:hover {
   align-items: center;
   gap: 18px;
   padding: 14px 28px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
+  /* background: var(--panel);
+  border-bottom: 1px solid var(--border); */
 }
 .brand {
   display: flex;
@@ -150,12 +302,43 @@ a:hover {
   padding: 24px 28px 56px;
 }
 .hero {
+  position: relative;
   background: linear-gradient(120deg, var(--hero-from), var(--hero-to));
   border-radius: 14px;
-  padding: 10px;
+  padding: 6px;
   margin-bottom: 22px;
   color: #fff;
   box-shadow: none;
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.32s ease;
+  transform-origin: center;
+}
+/* Estado enfocado: TODO el hero (fondo morado + buscador) hace zoom y baja
+   20px, elevándose por encima de la capa de oscurecimiento. El overlay vive
+   en un portal a document.body, así que este `transform` no lo confina. */
+.hero.focused {
+  z-index: 60;
+  transform: translateY(20px) scale(1.06);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+
+/* Capa que opaca/desenfoca toda la página (montada en document.body). */
+.search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgba(6, 8, 14, 0.55);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.28s ease, visibility 0.28s ease;
+}
+.search-overlay.show {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 .hero-search {
   position: relative;
