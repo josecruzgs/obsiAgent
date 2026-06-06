@@ -148,3 +148,36 @@ export async function listUsers(companyId: string): Promise<User[]> {
     [companyId]
   );
 }
+
+export async function createUser(
+  companyId: string,
+  email: string,
+  name: string | undefined,
+  role: Role
+): Promise<User> {
+  await ensureTenancy();
+  const rows = await query<User>(
+    `insert into users (company_id, email, name, role)
+     values ($1, $2, $3, $4)
+     returning id, company_id, email, name, role, ms_oid`,
+    [companyId, email.trim().toLowerCase(), name?.trim() || null, role]
+  );
+  return rows[0];
+}
+
+export async function deleteUser(id: string): Promise<void> {
+  await query(`delete from users where id = $1`, [id]);
+}
+
+export async function setUserRole(id: string, role: Role): Promise<void> {
+  await query(`update users set role = $1 where id = $2`, [role, id]);
+}
+
+/** Nº de superadmins de una empresa (para no quedarte sin ninguno). */
+export async function countSuperadmins(companyId: string): Promise<number> {
+  const r = await query<{ n: number }>(
+    `select count(*)::int as n from users where company_id = $1 and role = 'superadmin'`,
+    [companyId]
+  );
+  return Number(r[0]?.n ?? 0);
+}

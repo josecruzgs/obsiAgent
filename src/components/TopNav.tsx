@@ -58,6 +58,14 @@ export default function TopNav() {
             </Link>
           );
         })}
+        {me?.user.role === "superadmin" && (
+          <Link
+            href="/admin"
+            className={`nav-pill${pathname.startsWith("/admin") ? " active" : ""}`}
+          >
+            Admin
+          </Link>
+        )}
       </div>
 
       <div className="nav-actions">

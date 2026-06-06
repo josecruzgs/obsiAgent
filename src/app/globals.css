@@ -601,6 +601,45 @@ button.secondary:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
+/* ─── Admin ──────────────────────────────────────────────────────────── */
+select {
+  background: var(--card, rgba(255, 255, 255, 0.04));
+  color: inherit;
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.3));
+  border-radius: 9px;
+  padding: 9px 11px;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border, rgba(128, 128, 128, 0.18));
+  vertical-align: middle;
+}
+.admin-table th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.admin-table select {
+  padding: 6px 8px;
+  font-size: 13px;
+}
+.admin-table .secondary {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
 /* ─── Login ──────────────────────────────────────────────────────────── */
 .login-wrap {
   display: flex;
