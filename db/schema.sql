@@ -30,3 +30,12 @@ create index if not exists notes_embedding_idx
   on notes using hnsw (embedding vector_cosine_ops);
 
 create index if not exists links_target_idx on links (target);
+
+-- Ajustes de la app (key/value jsonb). P.ej. la conexión a OneDrive.
+-- También se crea de forma perezosa desde el código (src/lib/settings.ts) por si
+-- la DB ya existía antes de añadir esta tabla.
+create table if not exists app_settings (
+  key        text primary key,
+  value      jsonb not null,
+  updated_at timestamptz default now()
+);

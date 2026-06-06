@@ -10,6 +10,7 @@ const items = [
   { href: "/ingest", label: "Ingerir" },
   { href: "/notas", label: "Notas" },
   { href: "/graph", label: "Grafo" },
+  { href: "/config", label: "Config" },
 ];
 
 export default function TopNav() {

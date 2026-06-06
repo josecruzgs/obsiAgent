@@ -588,6 +588,18 @@ button:disabled {
   cursor: not-allowed;
   box-shadow: none;
 }
+/* Botón secundario: sin relleno de acento, para acciones menos prominentes. */
+button.secondary {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.3));
+  box-shadow: none;
+}
+button.secondary:hover:not(:disabled) {
+  color: var(--fg, inherit);
+  box-shadow: none;
+  transform: translateY(-1px);
+}
 
 /* ─── Utilidades ─────────────────────────────────────────────────────── */
 .tag {

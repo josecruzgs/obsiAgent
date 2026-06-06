@@ -34,6 +34,22 @@ export const env = {
     return optional("BULK_IMPORT_TOKEN");
   },
 
+  // URL pública de la app (para construir el redirect_uri de OAuth de OneDrive).
+  get publicBaseUrl() {
+    return optional("PUBLIC_BASE_URL", "https://obsiagent.iagent.mx").replace(
+      /\/$/,
+      ""
+    );
+  },
+  // Credenciales de la app registrada en Microsoft Entra (OneDrive vía Graph).
+  // Vacías hasta que el usuario las configure; los endpoints avisan si faltan.
+  get microsoft() {
+    return {
+      clientId: optional("MS_CLIENT_ID"),
+      clientSecret: optional("MS_CLIENT_SECRET"),
+    };
+  },
+
   get anthropicApiKey() {
     return required("ANTHROPIC_API_KEY");
   },
