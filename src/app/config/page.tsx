@@ -8,14 +8,17 @@ interface SyncSummary {
   failed: number;
   error?: string;
 }
-
-interface Status {
+interface ScopeStatus {
   connected: boolean;
   account: string;
   folder: string;
   lastSync: SyncSummary | null;
 }
-
+interface Status {
+  isSuperadmin: boolean;
+  company: ScopeStatus;
+  personal: ScopeStatus;
+}
 interface SyncResult {
   ok: boolean;
   encontrados?: number;
@@ -28,79 +31,32 @@ interface SyncResult {
   };
 }
 
+type Kind = "company" | "personal";
+
 export default function ConfigPage() {
   const [status, setStatus] = useState<Status | null>(null);
-  const [folder, setFolder] = useState("");
-  const [savingFolder, setSavingFolder] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [sync, setSync] = useState<SyncResult | null>(null);
   const [banner, setBanner] = useState<{ kind: "ok" | "error"; msg: string } | null>(null);
 
-  async function loadStatus() {
+  async function load() {
     const res = await fetch("/api/onedrive/status");
-    const data: Status = await res.json();
-    setStatus(data);
-    setFolder(data.folder);
+    if (res.ok) setStatus(await res.json());
   }
 
   useEffect(() => {
-    loadStatus();
-    // Mensajes que deja el callback de OAuth en la URL.
+    load();
     const p = new URLSearchParams(window.location.search);
-    if (p.get("connected")) {
-      setBanner({ kind: "ok", msg: "OneDrive conectado correctamente." });
-    } else if (p.get("error")) {
-      setBanner({ kind: "error", msg: `Error al conectar: ${p.get("error")}` });
-    }
-    if (p.get("connected") || p.get("error")) {
-      window.history.replaceState({}, "", "/config");
-    }
+    if (p.get("connected")) setBanner({ kind: "ok", msg: "OneDrive conectado." });
+    else if (p.get("error")) setBanner({ kind: "error", msg: `Error: ${p.get("error")}` });
+    if (p.get("connected") || p.get("error")) window.history.replaceState({}, "", "/config");
   }, []);
-
-  async function saveFolder() {
-    setSavingFolder(true);
-    try {
-      await fetch("/api/onedrive/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ folder }),
-      });
-      await loadStatus();
-      setBanner({ kind: "ok", msg: "Carpeta guardada." });
-    } finally {
-      setSavingFolder(false);
-    }
-  }
-
-  async function disconnect() {
-    await fetch("/api/onedrive/disconnect", { method: "POST" });
-    setSync(null);
-    await loadStatus();
-    setBanner({ kind: "ok", msg: "OneDrive desconectado." });
-  }
-
-  async function runSync() {
-    setSyncing(true);
-    setSync(null);
-    try {
-      const res = await fetch("/api/onedrive/sync", { method: "POST" });
-      setSync((await res.json()) as SyncResult);
-      await loadStatus();
-    } catch (err) {
-      setSync({ ok: false, error: String(err) });
-    } finally {
-      setSyncing(false);
-    }
-  }
 
   return (
     <>
       <h1>Configuración</h1>
       <p className="subtitle">
-        Conecta una carpeta de OneDrive. Los archivos que dejes ahí
-        (PDF, Word, texto, Markdown) se digieren con Claude y se añaden como notas
-        a tu vault; el original se mueve a <code>procesados</code> o{" "}
-        <code>fallidos</code> dentro de esa misma carpeta.
+        Conecta carpetas de OneDrive. Los archivos que dejes ahí (PDF, Word, texto,
+        Markdown) se digieren con Claude y se añaden como notas; el original se mueve
+        a <code>procesados</code> o <code>fallidos</code>.
       </p>
 
       {banner && (
@@ -112,95 +68,182 @@ export default function ConfigPage() {
         </div>
       )}
 
-      <div className="card">
-        <h2 className="card-title">OneDrive</h2>
-
-        {!status ? (
+      {!status ? (
+        <div className="card">
           <p className="muted">Cargando…</p>
-        ) : status.connected ? (
-          <>
-            <p className="success">✓ Conectado{status.account ? ` como ${status.account}` : ""}</p>
+        </div>
+      ) : (
+        <>
+          <ScopeCard
+            title="Base empresarial"
+            hint="Compartida por toda la empresa. La conecta el superadmin."
+            kind="company"
+            data={status.company}
+            canManage={status.isSuperadmin}
+            onChanged={load}
+            setBanner={setBanner}
+          />
+          <ScopeCard
+            title="Mi base personal"
+            hint="Privada: solo tú ves estas notas."
+            kind="personal"
+            data={status.personal}
+            canManage={true}
+            onChanged={load}
+            setBanner={setBanner}
+          />
+        </>
+      )}
+    </>
+  );
+}
 
-            <div style={{ height: 14 }} />
-            <label htmlFor="folder">Carpeta a vigilar (relativa a la raíz de OneDrive)</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input
-                id="folder"
-                type="text"
-                value={folder}
-                onChange={(e) => setFolder(e.target.value)}
-                placeholder="ObsiAgent"
-                style={{ flex: 1 }}
-              />
-              <button
-                type="button"
-                onClick={saveFolder}
-                disabled={savingFolder || !folder.trim() || folder === status.folder}
-              >
-                {savingFolder ? "Guardando…" : "Guardar"}
-              </button>
-            </div>
+function ScopeCard({
+  title,
+  hint,
+  kind,
+  data,
+  canManage,
+  onChanged,
+  setBanner,
+}: {
+  title: string;
+  hint: string;
+  kind: Kind;
+  data: ScopeStatus;
+  canManage: boolean;
+  onChanged: () => void;
+  setBanner: (b: { kind: "ok" | "error"; msg: string } | null) => void;
+}) {
+  const [folder, setFolder] = useState(data.folder);
+  const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [sync, setSync] = useState<SyncResult | null>(null);
 
-            <div style={{ height: 16 }} />
-            <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" onClick={runSync} disabled={syncing}>
-                {syncing ? "Sincronizando…" : "Sincronizar ahora"}
-              </button>
-              <button type="button" className="secondary" onClick={disconnect} disabled={syncing}>
-                Desconectar
-              </button>
-            </div>
+  useEffect(() => setFolder(data.folder), [data.folder]);
 
-            {status.lastSync && (
-              <p className="muted" style={{ marginTop: 12 }}>
-                Último sync: {new Date(status.lastSync.at).toLocaleString("es-MX")} ·{" "}
-                {status.lastSync.ok} ok, {status.lastSync.failed} fallidos
-                {status.lastSync.error ? ` · error: ${status.lastSync.error}` : ""}
-              </p>
-            )}
-          </>
-        ) : (
-          <>
-            <p className="muted">No conectado.</p>
-            <div style={{ height: 12 }} />
-            <button type="button" onClick={() => (window.location.href = "/api/onedrive/connect")}>
-              Conectar OneDrive
+  async function saveFolder() {
+    setSaving(true);
+    try {
+      await fetch("/api/onedrive/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope: kind, folder }),
+      });
+      onChanged();
+      setBanner({ kind: "ok", msg: "Carpeta guardada." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function runSync() {
+    setSyncing(true);
+    setSync(null);
+    try {
+      const res = await fetch(`/api/onedrive/sync?scope=${kind}`, { method: "POST" });
+      setSync((await res.json()) as SyncResult);
+      onChanged();
+    } catch (err) {
+      setSync({ ok: false, error: String(err) });
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  async function disconnect() {
+    await fetch("/api/onedrive/disconnect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scope: kind }),
+    });
+    setSync(null);
+    onChanged();
+  }
+
+  return (
+    <div className="card">
+      <h2 className="card-title">{title}</h2>
+      <p className="muted" style={{ marginTop: -6 }}>{hint}</p>
+
+      {data.connected ? (
+        <p className="success" style={{ marginTop: 10 }}>
+          ✓ Conectado{data.account ? ` como ${data.account}` : ""}
+        </p>
+      ) : (
+        <p className="muted" style={{ marginTop: 10 }}>No conectado.</p>
+      )}
+
+      {!canManage ? (
+        <p className="muted" style={{ marginTop: 10 }}>
+          Solo el superadmin gestiona esta conexión.
+        </p>
+      ) : data.connected ? (
+        <>
+          <div style={{ height: 12 }} />
+          <label>Carpeta (relativa a la raíz de OneDrive)</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              type="text"
+              value={folder}
+              onChange={(e) => setFolder(e.target.value)}
+              placeholder="ObsiAgent"
+              style={{ flex: 1 }}
+            />
+            <button type="button" onClick={saveFolder} disabled={saving || !folder.trim() || folder === data.folder}>
+              {saving ? "…" : "Guardar"}
             </button>
-          </>
-        )}
-      </div>
+          </div>
+          <div style={{ height: 14 }} />
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" onClick={runSync} disabled={syncing}>
+              {syncing ? "Sincronizando…" : "Sincronizar ahora"}
+            </button>
+            <button type="button" className="secondary" onClick={disconnect} disabled={syncing}>
+              Desconectar
+            </button>
+          </div>
+          {data.lastSync && (
+            <p className="muted" style={{ marginTop: 12 }}>
+              Último sync: {new Date(data.lastSync.at).toLocaleString("es-MX")} ·{" "}
+              {data.lastSync.ok} ok, {data.lastSync.failed} fallidos
+              {data.lastSync.error ? ` · error: ${data.lastSync.error}` : ""}
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          <div style={{ height: 12 }} />
+          <button
+            type="button"
+            onClick={() => (window.location.href = `/api/onedrive/connect?scope=${kind}`)}
+          >
+            Conectar OneDrive
+          </button>
+        </>
+      )}
 
       {sync && (
-        <div className="card">
+        <div style={{ marginTop: 14 }}>
           {sync.ok ? (
-            <>
-              <p className="success">
-                ✓ {sync.procesados}/{sync.encontrados} procesado(s), {sync.fallidos} fallido(s)
-              </p>
-              {sync.detalle && sync.detalle.procesados.length > 0 && (
-                <ul style={{ marginTop: 8, paddingLeft: 18 }}>
-                  {sync.detalle.procesados.map((r, i) => (
-                    <li key={i} className="success" style={{ marginBottom: 4 }}>
-                      ✓ {r.archivo} → {r.titulo}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {sync.detalle && sync.detalle.errores.length > 0 && (
-                <ul style={{ marginTop: 8, paddingLeft: 18 }}>
-                  {sync.detalle.errores.map((r, i) => (
-                    <li key={i} className="error" style={{ marginBottom: 4 }}>
-                      ✗ {r.archivo}: {r.error}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
+            <p className="success">
+              ✓ {sync.procesados}/{sync.encontrados} procesado(s), {sync.fallidos} fallido(s)
+            </p>
           ) : (
             <p className="error">✗ {sync.error}</p>
           )}
+          {sync.detalle?.procesados?.map((r, i) => (
+            <p key={`p${i}`} className="success" style={{ margin: "2px 0", fontSize: 13 }}>
+              ✓ {r.archivo} → {r.titulo}
+            </p>
+          ))}
+          {sync.detalle?.errores?.map((r, i) => (
+            <p key={`e${i}`} className="error" style={{ margin: "2px 0", fontSize: 13 }}>
+              ✗ {r.archivo}: {r.error}
+            </p>
+          ))}
         </div>
       )}
-    </>
+    </div>
   );
 }

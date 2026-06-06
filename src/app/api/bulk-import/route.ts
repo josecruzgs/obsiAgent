@@ -11,15 +11,9 @@ import path from "node:path";
 import { env } from "@/lib/env";
 import { isImportAuthorized } from "@/lib/importAuth";
 import { extractText, isSupported } from "@/lib/extract";
-import { digestDocument } from "@/lib/claude";
-import {
-  listNoteTitles,
-  listNoteIds,
-  slugify,
-  writeNote,
-  readNote,
-} from "@/lib/vault";
-import { indexNote } from "@/lib/indexer";
+import { getBootstrapCompany } from "@/lib/tenancy";
+import { companyScope } from "@/lib/scope";
+import { loadIngestContext, ingestText } from "@/lib/ingest";
 import { rebuildMoc } from "@/lib/moc";
 
 export const runtime = "nodejs";
@@ -44,14 +38,6 @@ async function listInboxFiles(dir: string): Promise<string[]> {
   return out.sort();
 }
 
-function uniqueId(base: string, taken: Set<string>): string {
-  let id = base || "nota";
-  let n = 2;
-  while (taken.has(id)) id = `${base}-${n++}`;
-  taken.add(id);
-  return id;
-}
-
 export async function POST(req: NextRequest) {
   if (!isImportAuthorized(req)) {
     return NextResponse.json(
@@ -66,9 +52,10 @@ export async function POST(req: NextRequest) {
   const files = await listInboxFiles(inbox);
   const toProcess = limit > 0 ? files.slice(0, limit) : files;
 
-  // Títulos/ids actuales para sugerir enlaces y evitar colisiones de nombre.
-  const titles = await listNoteTitles();
-  const takenIds = new Set(await listNoteIds());
+  // Sin sesión: el inbox alimenta la base EMPRESARIAL de la empresa por defecto.
+  const company = await getBootstrapCompany();
+  const scope = companyScope(company.id);
+  const ctx = await loadIngestContext(scope);
 
   const processedDir = path.join(inbox, "_procesados");
   const failedDir = path.join(inbox, "_fallidos");
@@ -85,28 +72,10 @@ export async function POST(req: NextRequest) {
       if (!text) throw new Error("Texto vacío tras la extracción");
 
       const hint = path.basename(file, path.extname(file));
-      const digest = await digestDocument(text, titles, hint);
-      const id = uniqueId(slugify(digest.title), takenIds);
+      const r = await ingestText(text, hint, ctx, { source: rel });
 
-      await writeNote({
-        id,
-        frontmatter: {
-          title: digest.title,
-          summary: digest.summary,
-          tags: digest.tags,
-          created: new Date().toISOString(),
-          source: rel,
-        },
-        body: text,
-        links: digest.suggestedLinks,
-      });
-
-      const note = await readNote(id);
-      if (note) await indexNote(note);
-
-      titles.push(digest.title); // permite enlazar a notas creadas en este lote
-      procesados.push({ archivo: rel, id, titulo: digest.title });
-      console.log(`[bulk-import] OK ${rel} -> ${id}`);
+      procesados.push({ archivo: rel, id: r.id, titulo: r.title });
+      console.log(`[bulk-import] OK ${rel} -> ${r.id}`);
 
       await fs
         .rename(file, path.join(processedDir, path.basename(file)))
@@ -121,7 +90,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  await rebuildMoc().catch((e) => console.error("[bulk-import] rebuildMoc:", e));
+  await rebuildMoc(scope).catch((e) => console.error("[bulk-import] rebuildMoc:", e));
 
   return NextResponse.json({
     ok: true,

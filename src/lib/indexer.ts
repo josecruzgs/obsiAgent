@@ -4,9 +4,10 @@ import { query, toVectorLiteral } from "./db";
 import { embedDocument } from "./embeddings";
 import { parseWikilinks } from "./vault";
 import type { VaultNote } from "./types";
+import type { Scope } from "./scope";
 
-/** Upsert de una nota en la DB, recalculando embedding y enlaces. */
-export async function indexNote(note: VaultNote): Promise<void> {
+/** Upsert de una nota en la DB (embedding + enlaces + ámbito). */
+export async function indexNote(note: VaultNote, scope: Scope): Promise<void> {
   const title = note.frontmatter.title ?? note.id;
   const summary = note.frontmatter.summary ?? null;
   const tags = Array.isArray(note.frontmatter.tags)
@@ -17,8 +18,8 @@ export async function indexNote(note: VaultNote): Promise<void> {
   const embedding = await embedDocument(textForEmbedding);
 
   await query(
-    `insert into notes (id, path, title, summary, tags, content, embedding, updated_at)
-     values ($1, $2, $3, $4, $5, $6, $7, now())
+    `insert into notes (id, path, title, summary, tags, content, embedding, company_id, owner_user_id, updated_at)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())
      on conflict (id) do update set
        path = excluded.path,
        title = excluded.title,
@@ -26,6 +27,8 @@ export async function indexNote(note: VaultNote): Promise<void> {
        tags = excluded.tags,
        content = excluded.content,
        embedding = excluded.embedding,
+       company_id = excluded.company_id,
+       owner_user_id = excluded.owner_user_id,
        updated_at = now()`,
     [
       note.id,
@@ -35,6 +38,8 @@ export async function indexNote(note: VaultNote): Promise<void> {
       tags,
       note.body,
       toVectorLiteral(embedding),
+      scope.companyId,
+      scope.userId,
     ]
   );
 

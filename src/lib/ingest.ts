@@ -1,27 +1,27 @@
 // Lógica compartida de ingesta: digerir un texto con Claude, escribir el .md en
-// el vault e indexarlo (embedding + enlaces). La usan tanto la importación desde
-// OneDrive como cualquier otro flujo que ya tenga el texto extraído.
+// el vault (en el ámbito dado) e indexarlo (embedding + enlaces + scope). La usan
+// la importación desde OneDrive y los flujos de subida/pegado.
 import { digestDocument } from "./claude";
-import {
-  listNoteTitles,
-  listNoteIds,
-  slugify,
-  writeNote,
-  readNote,
-} from "./vault";
+import { listNoteTitles, slugify, writeNote, readNote } from "./vault";
 import { indexNote } from "./indexer";
+import { query } from "./db";
+import { scopeSubdir, type Scope } from "./scope";
 import type { NoteFrontmatter } from "./types";
 
 export interface IngestContext {
-  titles: string[]; // títulos existentes (para sugerir enlaces y enlazar a recién creados)
-  takenIds: Set<string>; // ids ya usados (para evitar colisiones de nombre)
+  scope: Scope;
+  subdir: string;
+  titles: string[]; // títulos del MISMO ámbito (para enlazar dentro del ámbito)
+  takenIds: Set<string>; // ids GLOBALES (la columna id es PK global) -> evita colisiones
 }
 
-/** Carga el contexto (títulos + ids) una vez antes de procesar un lote. */
-export async function loadIngestContext(): Promise<IngestContext> {
-  const titles = await listNoteTitles();
-  const takenIds = new Set(await listNoteIds());
-  return { titles, takenIds };
+/** Carga el contexto (títulos del ámbito + ids globales) antes de un lote. */
+export async function loadIngestContext(scope: Scope): Promise<IngestContext> {
+  const subdir = scopeSubdir(scope);
+  const titles = await listNoteTitles(subdir);
+  const rows = await query<{ id: string }>(`select id from notes`);
+  const takenIds = new Set(rows.map((r) => r.id));
+  return { scope, subdir, titles, takenIds };
 }
 
 function uniqueId(base: string, taken: Set<string>): string {
@@ -40,10 +40,7 @@ export interface IngestResult {
   links: string[];
 }
 
-/**
- * Digiere un texto ya extraído y lo guarda como nota (vault + DB).
- * Muta `ctx` para que un lote pueda enlazar a notas creadas en la misma corrida.
- */
+/** Digiere un texto ya extraído y lo guarda como nota (vault + DB) en el ámbito de ctx. */
 export async function ingestText(
   text: string,
   hint: string | undefined,
@@ -55,6 +52,7 @@ export async function ingestText(
 
   await writeNote({
     id,
+    subdir: ctx.subdir,
     frontmatter: {
       title: digest.title,
       summary: digest.summary,
@@ -66,8 +64,8 @@ export async function ingestText(
     links: digest.suggestedLinks,
   });
 
-  const note = await readNote(id);
-  if (note) await indexNote(note);
+  const note = await readNote(id, ctx.subdir);
+  if (note) await indexNote(note, ctx.scope);
 
   ctx.titles.push(digest.title);
   return {

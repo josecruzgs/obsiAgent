@@ -4,7 +4,11 @@
 // Configura en Evolution el webhook hacia esta URL con el evento MESSAGES_UPSERT.
 import { NextRequest, NextResponse } from "next/server";
 import { answer } from "@/lib/rag";
+import { getBootstrapCompany, type User } from "@/lib/tenancy";
 import { sendText, isAllowed } from "@/lib/evolution";
+
+// uuid imposible: hace que el filtro "personal" no devuelva nada -> solo empresarial.
+const NO_USER = "00000000-0000-0000-0000-000000000000";
 
 export const runtime = "nodejs";
 
@@ -80,7 +84,17 @@ export async function POST(req: NextRequest) {
 }
 
 async function handleQuery(number: string, text: string): Promise<void> {
-  const result = await answer(text);
+  // WhatsApp consulta la base EMPRESARIAL de la empresa por defecto.
+  const company = await getBootstrapCompany();
+  const companyUser: User = {
+    id: NO_USER,
+    company_id: company.id,
+    email: "",
+    name: null,
+    role: "member",
+    ms_oid: null,
+  };
+  const result = await answer(text, companyUser);
   const sources =
     result.sources.length > 0
       ? "\n\n_Fuentes: " +

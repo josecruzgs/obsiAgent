@@ -1,33 +1,72 @@
-// GET  /api/onedrive/status  — estado de la conexión (sin exponer el token).
-// POST /api/onedrive/status  — actualiza la carpeta a vigilar { folder }.
+// GET  /api/onedrive/status — estado de las conexiones del usuario (empresarial + personal).
+// POST /api/onedrive/status — actualiza la carpeta de un ámbito { scope, folder }.
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getOneDrive, setOneDrive } from "@/lib/settings";
+import { requireUser } from "@/lib/currentUser";
+import { authErrorResponse } from "@/lib/adminAuth";
+import { getConnection, upsertConnection } from "@/lib/connections";
+import { companyScope, personalScope, type Scope } from "@/lib/scope";
+import type { OneDriveConnection } from "@/lib/connections";
 
 export const runtime = "nodejs";
 
-export async function GET() {
-  const s = await getOneDrive();
-  return NextResponse.json({
-    connected: Boolean(s.refreshToken),
-    account: s.account ?? "",
-    folder: s.folder,
-    lastSync: s.lastSync ?? null,
-    configured: true,
-  });
+function summary(conn: OneDriveConnection | null) {
+  return {
+    connected: Boolean(conn?.refresh_token),
+    account: conn?.account ?? "",
+    folder: conn?.folder ?? "ObsiAgent",
+    lastSync: conn?.last_sync ?? null,
+  };
 }
 
-const bodySchema = z.object({ folder: z.string().trim().min(1).max(200) });
+export async function GET() {
+  try {
+    const user = await requireUser();
+    const [company, personal] = await Promise.all([
+      getConnection(companyScope(user.company_id)),
+      getConnection(personalScope(user.company_id, user.id)),
+    ]);
+    return NextResponse.json({
+      isSuperadmin: user.role === "superadmin",
+      company: summary(company),
+      personal: summary(personal),
+    });
+  } catch (err) {
+    return (
+      authErrorResponse(err) ??
+      NextResponse.json({ error: String(err) }, { status: 500 })
+    );
+  }
+}
+
+const bodySchema = z.object({
+  scope: z.enum(["company", "personal"]),
+  folder: z.string().trim().min(1).max(200),
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const { folder } = bodySchema.parse(await req.json());
-    // Normaliza: sin barras al inicio/fin.
+    const user = await requireUser();
+    const { scope: kind, folder } = bodySchema.parse(await req.json());
+    if (kind === "company" && user.role !== "superadmin") {
+      return NextResponse.json(
+        { error: "Solo el superadmin configura la carpeta empresarial." },
+        { status: 403 }
+      );
+    }
+    const scope: Scope =
+      kind === "company"
+        ? companyScope(user.company_id)
+        : personalScope(user.company_id, user.id);
     const clean = folder.replace(/^\/+|\/+$/g, "");
-    const s = await setOneDrive({ folder: clean });
-    return NextResponse.json({ ok: true, folder: s.folder });
+    const conn = await upsertConnection(scope, { folder: clean });
+    return NextResponse.json({ ok: true, folder: conn.folder });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Error";
-    return NextResponse.json({ ok: false, error: msg }, { status: 400 });
+    const a = authErrorResponse(err);
+    if (a) return a;
+    return NextResponse.json(
+      { ok: false, error: err instanceof Error ? err.message : "Error" },
+      { status: 400 }
+    );
   }
 }

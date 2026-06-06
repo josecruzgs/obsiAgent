@@ -4,11 +4,13 @@
 //
 // El MOC se guarda como _indice.md (nota de sistema): NO se indexa con embedding
 // ni aparece en /graph; el buscador lo lee directo del vault.
-import { readAllNotes, writeNote, MOC_ID } from "./vault";
+import { readAllNotes, writeNote } from "./vault";
+import { scopeSubdir, mocId, type Scope } from "./scope";
 
-/** Reconstruye _indice.md a partir de todas las notas reales del vault. */
-export async function rebuildMoc(): Promise<void> {
-  const notes = await readAllNotes(); // ya excluye notas "_" de sistema
+/** Reconstruye la nota índice (MOC) de un ámbito a partir de sus notas reales. */
+export async function rebuildMoc(scope: Scope): Promise<void> {
+  const subdir = scopeSubdir(scope);
+  const notes = await readAllNotes(subdir); // ya excluye notas "_" de sistema
   notes.sort((a, b) =>
     (a.frontmatter.title ?? a.id).localeCompare(b.frontmatter.title ?? b.id)
   );
@@ -30,7 +32,8 @@ export async function rebuildMoc(): Promise<void> {
     lines.join("\n");
 
   await writeNote({
-    id: MOC_ID,
+    id: mocId(scope),
+    subdir,
     frontmatter: {
       title: "Índice del vault",
       summary: `Mapa de ${notes.length} notas con sus resúmenes y tags.`,

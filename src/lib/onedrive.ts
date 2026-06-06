@@ -1,8 +1,7 @@
 // Cliente mínimo de Microsoft Graph para OneDrive: OAuth (authorization code +
 // refresh) y operaciones de archivos (listar carpeta, descargar, crear carpeta,
-// mover). El token de refresco se guarda/rota en `settings` (DB).
+// mover). La persistencia/rotación del refresh_token vive en `connections` (DB).
 import { env } from "./env";
-import { getOneDrive, setOneDrive } from "./settings";
 
 const AUTHORITY = "https://login.microsoftonline.com/common/oauth2/v2.0";
 const GRAPH = "https://graph.microsoft.com/v1.0";
@@ -33,7 +32,7 @@ export function authorizeUrl(state: string): string {
   return `${AUTHORITY}/authorize?${params.toString()}`;
 }
 
-interface TokenResponse {
+export interface TokenResponse {
   access_token: string;
   refresh_token?: string;
   expires_in: number;
@@ -64,22 +63,13 @@ export function exchangeCode(code: string): Promise<TokenResponse> {
   return tokenRequest({ grant_type: "authorization_code", code, scope: SCOPES });
 }
 
-/**
- * Devuelve un access token válido usando el refresh token guardado, y persiste
- * el refresh token rotado si Microsoft devuelve uno nuevo.
- */
-export async function getAccessToken(): Promise<string> {
-  const s = await getOneDrive();
-  if (!s.refreshToken) throw new Error("OneDrive no está conectado.");
-  const tok = await tokenRequest({
+/** Refresca el access token a partir de un refresh token (sin persistir). */
+export function refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
+  return tokenRequest({
     grant_type: "refresh_token",
-    refresh_token: s.refreshToken,
+    refresh_token: refreshToken,
     scope: SCOPES,
   });
-  if (tok.refresh_token && tok.refresh_token !== s.refreshToken) {
-    await setOneDrive({ refreshToken: tok.refresh_token });
-  }
-  return tok.access_token;
 }
 
 async function graph(

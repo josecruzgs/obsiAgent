@@ -8,6 +8,8 @@ import { isImportAuthorized } from "@/lib/importAuth";
 import { readAllNotes } from "@/lib/vault";
 import { indexNote } from "@/lib/indexer";
 import { rebuildMoc } from "@/lib/moc";
+import { getBootstrapCompany, listUsers } from "@/lib/tenancy";
+import { companyScope, personalScope, scopeSubdir, type Scope } from "@/lib/scope";
 
 export const runtime = "nodejs";
 
@@ -19,24 +21,33 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const notes = await readAllNotes();
-  let indexadas = 0;
-  const errores: { id: string; error: string }[] = [];
-
-  for (const note of notes) {
-    try {
-      await indexNote(note);
-      indexadas++;
-      console.log(`[reindex] ${note.id}`);
-    } catch (err) {
-      errores.push({
-        id: note.id,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
+  const company = await getBootstrapCompany();
+  // Ámbitos a reindexar: empresarial (raíz) + el personal de cada usuario.
+  const scopes: Scope[] = [companyScope(company.id)];
+  for (const u of await listUsers(company.id)) {
+    scopes.push(personalScope(company.id, u.id));
   }
 
-  await rebuildMoc().catch((e) => console.error("[reindex] rebuildMoc:", e));
+  let indexadas = 0;
+  let total = 0;
+  const errores: { id: string; error: string }[] = [];
 
-  return NextResponse.json({ ok: true, total: notes.length, indexadas, errores });
+  for (const scope of scopes) {
+    const notes = await readAllNotes(scopeSubdir(scope));
+    total += notes.length;
+    for (const note of notes) {
+      try {
+        await indexNote(note, scope);
+        indexadas++;
+      } catch (err) {
+        errores.push({
+          id: note.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+    await rebuildMoc(scope).catch((e) => console.error("[reindex] rebuildMoc:", e));
+  }
+
+  return NextResponse.json({ ok: true, total, indexadas, errores });
 }

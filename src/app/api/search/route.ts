@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { answer } from "@/lib/rag";
+import { requireUser } from "@/lib/currentUser";
+import { authErrorResponse } from "@/lib/adminAuth";
 
 export const runtime = "nodejs";
 
@@ -12,10 +14,13 @@ const bodySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await requireUser();
     const { q, k } = bodySchema.parse(await req.json());
-    const result = await answer(q, k ?? 5);
+    const result = await answer(q, user, k ?? 5);
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
+    const a = authErrorResponse(err);
+    if (a) return a;
     console.error("[search] error:", err);
     const message = err instanceof Error ? err.message : "Error desconocido";
     return NextResponse.json({ ok: false, error: message }, { status: 400 });

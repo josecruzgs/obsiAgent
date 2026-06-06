@@ -1,30 +1,23 @@
-// POST /api/upload — recibe archivos subidos desde la web (multipart/form-data),
-// extrae su texto (.pdf/.docx/.txt/.md), los digiere con Claude, los guarda como
-// .md en el vault y los indexa. Devuelve un resultado por archivo.
+// POST /api/upload — archivos subidos desde la web (multipart/form-data): extrae
+// texto, digiere con Claude y los guarda como notas EMPRESARIALES + indexa.
 import { NextRequest, NextResponse } from "next/server";
 import { extractTextFromBuffer, isSupported } from "@/lib/extract";
-import { digestDocument } from "@/lib/claude";
-import {
-  listNoteTitles,
-  listNoteIds,
-  slugify,
-  writeNote,
-  readNote,
-} from "@/lib/vault";
-import { indexNote } from "@/lib/indexer";
+import { requireUser } from "@/lib/currentUser";
+import { authErrorResponse } from "@/lib/adminAuth";
+import { companyScope } from "@/lib/scope";
+import { loadIngestContext, ingestText } from "@/lib/ingest";
 import { rebuildMoc } from "@/lib/moc";
 
 export const runtime = "nodejs";
 
-function uniqueId(base: string, taken: Set<string>): string {
-  let id = base || "nota";
-  let n = 2;
-  while (taken.has(id)) id = `${base}-${n++}`;
-  taken.add(id);
-  return id;
-}
-
 export async function POST(req: NextRequest) {
+  let user;
+  try {
+    user = await requireUser();
+  } catch (err) {
+    return authErrorResponse(err) ?? NextResponse.json({ ok: false, error: String(err) }, { status: 401 });
+  }
+
   let form: FormData;
   try {
     form = await req.formData();
@@ -43,9 +36,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Títulos/ids actuales para sugerir enlaces y evitar colisiones de nombre.
-  const titles = await listNoteTitles();
-  const taken = new Set(await listNoteIds());
+  const scope = companyScope(user.company_id);
+  const ctx = await loadIngestContext(scope);
 
   const resultados: {
     archivo: string;
@@ -65,28 +57,9 @@ export async function POST(req: NextRequest) {
       if (!text) throw new Error("No se pudo extraer texto del archivo");
 
       const hint = file.name.replace(/\.[^.]+$/, "");
-      const digest = await digestDocument(text, titles, hint);
-      const id = uniqueId(slugify(digest.title), taken);
-
-      await writeNote({
-        id,
-        frontmatter: {
-          title: digest.title,
-          summary: digest.summary,
-          tags: digest.tags,
-          created: new Date().toISOString(),
-          source: file.name,
-        },
-        body: text,
-        links: digest.suggestedLinks,
-      });
-
-      const note = await readNote(id);
-      if (note) await indexNote(note);
-
-      titles.push(digest.title); // permite enlazar entre archivos del mismo lote
-      resultados.push({ archivo: file.name, ok: true, id, titulo: digest.title });
-      console.log(`[upload] OK ${file.name} -> ${id}`);
+      const r = await ingestText(text, hint, ctx, { source: file.name });
+      resultados.push({ archivo: file.name, ok: true, id: r.id, titulo: r.title });
+      console.log(`[upload] OK ${file.name} -> ${r.id}`);
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
       resultados.push({ archivo: file.name, ok: false, error });
@@ -94,7 +67,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  await rebuildMoc().catch((e) => console.error("[upload] rebuildMoc:", e));
+  await rebuildMoc(scope).catch((e) => console.error("[upload] rebuildMoc:", e));
 
   return NextResponse.json({
     ok: true,

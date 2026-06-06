@@ -1,9 +1,10 @@
-// POST /api/ingest — digiere un documento raw y lo guarda como nota en el vault + DB.
+// POST /api/ingest — digiere un documento raw y lo guarda como nota EMPRESARIAL.
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { digestDocument } from "@/lib/claude";
-import { listNoteTitles, slugify, writeNote, readNote } from "@/lib/vault";
-import { indexNote } from "@/lib/indexer";
+import { requireUser } from "@/lib/currentUser";
+import { authErrorResponse } from "@/lib/adminAuth";
+import { companyScope } from "@/lib/scope";
+import { loadIngestContext, ingestText } from "@/lib/ingest";
 import { rebuildMoc } from "@/lib/moc";
 
 export const runtime = "nodejs";
@@ -15,42 +16,26 @@ const bodySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await requireUser();
     const { raw, title } = bodySchema.parse(await req.json());
 
-    // 1. Digestión con Claude: título, resumen, tags, enlaces sugeridos.
-    const existingTitles = await listNoteTitles();
-    const digest = await digestDocument(raw, existingTitles, title);
+    const scope = companyScope(user.company_id);
+    const ctx = await loadIngestContext(scope);
+    const r = await ingestText(raw, title, ctx);
 
-    // 2. Escribir el .md en el vault (frontmatter + cuerpo + wikilinks).
-    const id = slugify(digest.title);
-    const created = new Date().toISOString();
-    await writeNote({
-      id,
-      frontmatter: {
-        title: digest.title,
-        summary: digest.summary,
-        tags: digest.tags,
-        created,
-      },
-      body: raw,
-      links: digest.suggestedLinks,
-    });
-
-    // 3. Indexar en la DB (embedding Voyage + enlaces).
-    const note = await readNote(id);
-    if (note) await indexNote(note);
-
-    await rebuildMoc().catch((e) => console.error("[ingest] rebuildMoc:", e));
+    await rebuildMoc(scope).catch((e) => console.error("[ingest] rebuildMoc:", e));
 
     return NextResponse.json({
       ok: true,
-      id,
-      title: digest.title,
-      summary: digest.summary,
-      tags: digest.tags,
-      links: digest.suggestedLinks,
+      id: r.id,
+      title: r.title,
+      summary: r.summary,
+      tags: r.tags,
+      links: r.links,
     });
   } catch (err) {
+    const a = authErrorResponse(err);
+    if (a) return a;
     console.error("[ingest] error:", err);
     const message = err instanceof Error ? err.message : "Error desconocido";
     return NextResponse.json({ ok: false, error: message }, { status: 400 });

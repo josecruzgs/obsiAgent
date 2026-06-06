@@ -56,6 +56,27 @@ async function run(): Promise<void> {
     `create index if not exists notes_scope_idx on notes (company_id, owner_user_id)`
   );
 
+  // Conexiones a OneDrive por ámbito: empresarial (owner null) o personal (por usuario).
+  await query(`create table if not exists onedrive_connections (
+    id            uuid primary key default gen_random_uuid(),
+    company_id    uuid not null references companies(id) on delete cascade,
+    owner_user_id uuid references users(id) on delete cascade,
+    refresh_token text,
+    account       text,
+    folder        text not null default 'ObsiAgent',
+    last_sync     jsonb,
+    updated_at    timestamptz default now()
+  )`);
+  // Una sola conexión empresarial por empresa, y una personal por usuario.
+  await query(
+    `create unique index if not exists onedrive_conn_company_uidx
+       on onedrive_connections (company_id) where owner_user_id is null`
+  );
+  await query(
+    `create unique index if not exists onedrive_conn_user_uidx
+       on onedrive_connections (owner_user_id) where owner_user_id is not null`
+  );
+
   await seed();
 }
 
@@ -94,6 +115,57 @@ async function seed(): Promise<void> {
   await query(`update notes set company_id = $1 where company_id is null`, [
     company.id,
   ]);
+
+  // Migra la conexión OneDrive single-tenant (app_settings.onedrive) a conexión
+  // EMPRESARIAL. app_settings puede no existir todavía -> se ignora el error.
+  try {
+    const old = await query<{ value: OldOneDrive }>(
+      `select value from app_settings where key = 'onedrive'`
+    );
+    const v = old[0]?.value;
+    if (v?.refreshToken) {
+      const has = await query(
+        `select 1 from onedrive_connections where company_id = $1 and owner_user_id is null`,
+        [company.id]
+      );
+      if (has.length === 0) {
+        await query(
+          `insert into onedrive_connections (company_id, owner_user_id, refresh_token, account, folder, last_sync)
+           values ($1, null, $2, $3, $4, $5)`,
+          [
+            company.id,
+            v.refreshToken,
+            v.account ?? null,
+            v.folder ?? "ObsiAgent",
+            v.lastSync ? JSON.stringify(v.lastSync) : null,
+          ]
+        );
+      }
+      await query(`delete from app_settings where key = 'onedrive'`);
+    }
+  } catch {
+    /* app_settings no existe o no hay nada que migrar */
+  }
+}
+
+interface OldOneDrive {
+  refreshToken?: string;
+  account?: string;
+  folder?: string;
+  lastSync?: unknown;
+}
+
+/** Empresa por defecto (la del bootstrap, p.ej. iAgent). Para flujos sin sesión. */
+export async function getBootstrapCompany(): Promise<Company> {
+  await ensureTenancy();
+  const rows = await query<Company>(
+    `select id, name from companies where name = $1`,
+    [env.bootstrapCompany]
+  );
+  if (rows[0]) return rows[0];
+  // Si no existe (caso raro), devuelve la primera empresa.
+  const any = await query<Company>(`select id, name from companies order by created_at limit 1`);
+  return any[0];
 }
 
 export async function getCompany(id: string): Promise<Company | null> {

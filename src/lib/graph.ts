@@ -1,5 +1,8 @@
-// Construye el grafo de conocimiento a partir de notas y enlaces de la DB.
+// Construye el grafo de conocimiento a partir de notas y enlaces de la DB,
+// limitado a lo que el usuario puede ver (empresarial + su personal).
 import { query } from "./db";
+import { readableNotesFilter } from "./scope";
+import type { User } from "./tenancy";
 import type { GraphData, GraphEdge, GraphNode } from "./types";
 
 interface NoteRow {
@@ -13,11 +16,19 @@ interface LinkRow {
   target: string;
 }
 
-export async function buildGraph(): Promise<GraphData> {
+export async function buildGraph(user: User): Promise<GraphData> {
+  const f = readableNotesFilter(user, 1);
   const notes = await query<NoteRow>(
-    `select id, title, tags from notes order by id`
+    `select id, title, tags from notes where ${f.sql} order by id`,
+    f.params
   );
-  const links = await query<LinkRow>(`select source, target from links`);
+  // Solo enlaces que salen de notas visibles.
+  const noteIds = notes.map((n) => n.id);
+  const links = noteIds.length
+    ? await query<LinkRow>(`select source, target from links where source = any($1)`, [
+        noteIds,
+      ])
+    : [];
 
   const ids = new Set(notes.map((n) => n.id));
   const titleToId = new Map<string, string>();

@@ -1,8 +1,17 @@
-// Retrieval-Augmented Generation: recupera notas por similitud y responde con Claude.
+// Retrieval-Augmented Generation: recupera notas (filtradas por el ámbito que el
+// usuario puede ver: empresarial + su personal) y responde con Claude.
 import { query, toVectorLiteral } from "./db";
 import { embedQuery } from "./embeddings";
 import { answerWithContext } from "./claude";
-import { readNote, MOC_ID } from "./vault";
+import { readNote } from "./vault";
+import {
+  readableNotesFilter,
+  companyScope,
+  personalScope,
+  mocId,
+  scopeSubdir,
+} from "./scope";
+import type { User } from "./tenancy";
 import type { RagAnswer, RetrievedNote } from "./types";
 
 interface RetrieveRow {
@@ -13,20 +22,22 @@ interface RetrieveRow {
   distance: number;
 }
 
-/** Recupera las K notas más similares a la consulta (coseno, pgvector). */
+/** Recupera las K notas más similares que el usuario puede ver (coseno, pgvector). */
 export async function retrieve(
   queryText: string,
+  user: User,
   k = 5
 ): Promise<RetrievedNote[]> {
   const vec = await embedQuery(queryText);
+  const f = readableNotesFilter(user, 2); // $1 = vector
   const rows = await query<RetrieveRow>(
     `select id, title, summary, content,
             embedding <=> $1 as distance
      from notes
-     where embedding is not null
+     where embedding is not null and ${f.sql}
      order by embedding <=> $1
-     limit $2`,
-    [toVectorLiteral(vec), k]
+     limit $${2 + f.params.length}`,
+    [toVectorLiteral(vec), ...f.params, k]
   );
   return rows.map((r) => ({
     id: r.id,
@@ -37,13 +48,26 @@ export async function retrieve(
   }));
 }
 
-/** Recupera contexto (top-K + índice general) y genera una respuesta citada. */
-export async function answer(queryText: string, k = 5): Promise<RagAnswer> {
-  const [notes, moc] = await Promise.all([
-    retrieve(queryText, k),
-    readNote(MOC_ID).catch(() => null), // índice general (panorama del vault)
+/** Recupera contexto (top-K + índices empresarial y personal) y responde citando. */
+export async function answer(
+  queryText: string,
+  user: User,
+  k = 5
+): Promise<RagAnswer> {
+  const cScope = companyScope(user.company_id);
+  const pScope = personalScope(user.company_id, user.id);
+  const [notes, mocCompany, mocPersonal] = await Promise.all([
+    retrieve(queryText, user, k),
+    readNote(mocId(cScope), scopeSubdir(cScope)).catch(() => null),
+    readNote(mocId(pScope), scopeSubdir(pScope)).catch(() => null),
   ]);
-  const text = await answerWithContext(queryText, notes, moc?.body);
+
+  const parts: string[] = [];
+  if (mocCompany?.body) parts.push(`[Base EMPRESARIAL]\n${mocCompany.body}`);
+  if (mocPersonal?.body) parts.push(`[Base PERSONAL]\n${mocPersonal.body}`);
+  const overview = parts.join("\n\n") || undefined;
+
+  const text = await answerWithContext(queryText, notes, overview);
   return {
     answer: text,
     sources: notes.map((n) => ({ id: n.id, title: n.title })),
