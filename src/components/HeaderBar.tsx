@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import { IconSearch, IconClose } from "./icons";
@@ -13,6 +14,7 @@ interface SearchResult {
 }
 
 export default function HeaderBar() {
+  const pathname = usePathname();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -68,6 +70,9 @@ export default function HeaderBar() {
     e.preventDefault();
     run(q);
   }
+
+  // En la pantalla de login no mostramos el buscador.
+  if (pathname === "/login") return null;
 
   return (
     <div className={`hero${focused ? " focused" : ""}`}>

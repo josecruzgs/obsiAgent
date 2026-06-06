@@ -34,6 +34,20 @@ export const env = {
     return optional("BULK_IMPORT_TOKEN");
   },
 
+  // Secreto para firmar la cookie de sesión (HMAC). Requerido para auth.
+  get sessionSecret() {
+    return required("SESSION_SECRET");
+  },
+  // Email del superadmin inicial (se siembra como dueño de la empresa iAgent).
+  // Debe coincidir con la cuenta Microsoft con la que iniciarás sesión.
+  get superadminEmail() {
+    return optional("SUPERADMIN_EMAIL", "jose.gallardo@iagent.mx").toLowerCase();
+  },
+  // Nombre de la empresa inicial sembrada en el bootstrap.
+  get bootstrapCompany() {
+    return optional("BOOTSTRAP_COMPANY", "iAgent");
+  },
+
   // URL pública de la app (para construir el redirect_uri de OAuth de OneDrive).
   get publicBaseUrl() {
     return optional("PUBLIC_BASE_URL", "https://obsiagent.iagent.mx").replace(

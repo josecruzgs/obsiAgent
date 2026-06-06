@@ -4,6 +4,24 @@
 
 create extension if not exists vector;
 
+-- Multi-empresa (tenancy). También se crean/siembran de forma perezosa desde el
+-- código (src/lib/tenancy.ts) por si la DB ya existía antes de añadirlas.
+create table if not exists companies (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null,
+  created_at timestamptz default now()
+);
+
+create table if not exists users (
+  id         uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies(id) on delete cascade,
+  email      text not null unique,
+  name       text,
+  role       text not null default 'member',     -- 'superadmin' | 'member'
+  ms_oid     text unique,                        -- object id de Microsoft
+  created_at timestamptz default now()
+);
+
 create table if not exists notes (
   id          text primary key,        -- slug = nombre de archivo sin .md
   path        text not null,           -- ruta relativa dentro del vault
@@ -12,9 +30,14 @@ create table if not exists notes (
   tags        text[] default '{}',
   content     text,
   embedding   vector(1024),            -- voyage-3.5 => 1024 dimensiones
+  -- Scope: empresa dueña y, si es una nota personal, el usuario dueño (null = empresarial).
+  company_id    uuid references companies(id) on delete cascade,
+  owner_user_id uuid references users(id) on delete cascade,
   created_at  timestamptz default now(),
   updated_at  timestamptz default now()
 );
+
+create index if not exists notes_scope_idx on notes (company_id, owner_user_id);
 
 create table if not exists links (
   source text not null references notes(id) on delete cascade,

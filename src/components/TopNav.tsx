@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
@@ -13,8 +14,25 @@ const items = [
   { href: "/config", label: "Config" },
 ];
 
+interface Me {
+  user: { email: string; name: string | null; role: string };
+  company: { name: string } | null;
+}
+
 export default function TopNav() {
   const pathname = usePathname();
+  const [me, setMe] = useState<Me | null>(null);
+
+  useEffect(() => {
+    if (pathname === "/login") return;
+    fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.authenticated && setMe(d))
+      .catch(() => {});
+  }, [pathname]);
+
+  // En la pantalla de login no mostramos la navegación.
+  if (pathname === "/login") return null;
 
   return (
     <nav className="topnav">
@@ -23,6 +41,7 @@ export default function TopNav() {
           <IconLogo />
         </span>
         obsiAgent
+        {me?.company && <span className="brand-company">· {me.company.name}</span>}
       </div>
 
       <div className="nav-pills">
@@ -43,6 +62,16 @@ export default function TopNav() {
 
       <div className="nav-actions">
         <ThemeToggle />
+        {me && (
+          <>
+            <span className="nav-user" title={me.user.email}>
+              {me.user.name || me.user.email}
+            </span>
+            <a href="/api/auth/logout" className="nav-pill">
+              Salir
+            </a>
+          </>
+        )}
       </div>
     </nav>
   );

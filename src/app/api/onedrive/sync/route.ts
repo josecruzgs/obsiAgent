@@ -4,7 +4,9 @@
 //
 // Reemplaza al script rclone+cron: ya no hace falta el inbox local. Lo puede
 // disparar el botón "Sincronizar ahora" de /config o un cron pegándole aquí.
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { isImportAuthorized } from "@/lib/importAuth";
+import { getCurrentUser } from "@/lib/currentUser";
 import { getOneDrive, setOneDrive } from "@/lib/settings";
 import {
   getAccessToken,
@@ -20,7 +22,13 @@ import { rebuildMoc } from "@/lib/moc";
 export const runtime = "nodejs";
 export const maxDuration = 300; // lotes grandes pueden tardar (Claude por archivo)
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  // Acceso: token de importación (cron) o sesión de usuario (botón en la UI).
+  const authorized = isImportAuthorized(req) || (await getCurrentUser()) !== null;
+  if (!authorized) {
+    return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const s = await getOneDrive();
     if (!s.refreshToken) {
