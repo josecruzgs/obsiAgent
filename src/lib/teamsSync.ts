@@ -1,19 +1,25 @@
-// Sincroniza las transcripciones de Teams de UNA conexión hacia su ámbito:
-//  - conexión empresarial -> base empresarial
-//  - conexión personal     -> base personal del usuario
-// Usa app-only por-tenant (tenant_id + ms_user_id capturados al conectar).
-// Idempotente por external_id ("teams:<transcriptId>").
+// Sincroniza las transcripciones de las reuniones de Teams hacia el ámbito de
+// la conexión (empresarial -> base empresarial; personal -> base personal).
+//
+// Estrategia: las reuniones organizadas por terceros (otros tenants) NO se
+// alcanzan con getAllTranscripts (es por-organizador y no cruza tenants), pero
+// su grabación cae en el OneDrive de quien graba. Cada .mp4 lleva la
+// transcripción embebida como "alternate content stream"; se lista la carpeta
+// de grabaciones, se baja el transcript embebido (API REST de SharePoint, en
+// streaming) y se ingiere. Idempotente por external_id ("teams:rec:<itemId>").
 import {
   getConnection,
   scopeOfConnection,
   type OneDriveConnection,
 } from "./connections";
 import {
-  getAppToken,
-  getAllTranscripts,
-  getTranscriptContent,
+  tokenForScope,
+  listRecordings,
+  hasAlternateContentStreams,
+  getRecordingTranscript,
+  type RecordingItem,
 } from "./onedrive";
-import { parseVtt } from "./extract";
+import { parseStreamTranscript } from "./extract";
 import { query } from "./db";
 import { type Scope } from "./scope";
 import { loadIngestContext, ingestText } from "./ingest";
@@ -29,7 +35,10 @@ export interface TeamsSyncResult {
   };
 }
 
-const extId = (transcriptId: string) => `teams:${transcriptId}`;
+// Carpetas donde Teams deja las grabaciones (nombre localizado del tenant).
+const RECORDINGS_FOLDERS = ["Grabaciones", "Recordings"];
+
+const extId = (driveItemId: string) => `teams:rec:${driveItemId}`;
 
 const EMPTY: TeamsSyncResult = {
   encontrados: 0,
@@ -38,25 +47,65 @@ const EMPTY: TeamsSyncResult = {
   detalle: { procesados: [], errores: [] },
 };
 
-/** ¿La conexión puede traer Teams? (cuenta de trabajo con tenant + user id). */
+/** ¿La conexión puede traer Teams? (cuenta de trabajo: tenant + user id). */
 export function teamsEligible(conn: OneDriveConnection | null): boolean {
   return Boolean(conn?.refresh_token && conn?.tenant_id && conn?.ms_user_id);
+}
+
+/** Deriva un título legible del nombre del archivo de grabación. */
+function tituloDeGrabacion(name: string): string {
+  let base = name.replace(/\.[^.]+$/, ""); // sin extensión
+  // Quitar el timestamp "-YYYYMMDD_HHMMSS" y todo lo que le siga (sufijo de Teams).
+  base = base.replace(/[-_]\d{8}[_-]\d{6}.*$/, "").trim();
+  return base || "Reunión de Teams";
+}
+
+/** Lista todas las grabaciones del OneDrive de la conexión (probando carpetas). */
+async function listAllRecordings(graphToken: string): Promise<RecordingItem[]> {
+  const vistos = new Set<string>();
+  const out: RecordingItem[] = [];
+  for (const folder of RECORDINGS_FOLDERS) {
+    const items = await listRecordings(graphToken, folder);
+    for (const it of items) {
+      if (!vistos.has(it.id)) {
+        vistos.add(it.id);
+        out.push(it);
+      }
+    }
+  }
+  return out;
 }
 
 /** Sincroniza una conexión concreta hacia su ámbito. */
 export async function runTeamsSyncForConnection(
   conn: OneDriveConnection
 ): Promise<TeamsSyncResult> {
-  if (!conn.tenant_id || !conn.ms_user_id) {
-    throw new Error(
-      "Esta conexión no es de una cuenta de trabajo (Teams no disponible). Reconéctala con tu cuenta M365."
-    );
+  if (!conn.refresh_token) {
+    throw new Error("OneDrive no está conectado en esta conexión.");
   }
 
   const scope = scopeOfConnection(conn);
-  const appToken = await getAppToken(conn.tenant_id);
-  const transcripts = await getAllTranscripts(appToken, conn.ms_user_id);
 
+  // Token delegado de Graph (para listar) — sin redirect_uri.
+  const graphToken = (
+    await tokenForScope(conn.refresh_token, "https://graph.microsoft.com/.default")
+  ).access_token;
+
+  const recordings = await listAllRecordings(graphToken);
+  if (recordings.length === 0) return EMPTY;
+
+  // Tokens de SharePoint por host (normalmente uno solo).
+  const spTokens = new Map<string, string>();
+  const spTokenFor = async (host: string): Promise<string> => {
+    const cached = spTokens.get(host);
+    if (cached) return cached;
+    const t = (await tokenForScope(conn.refresh_token!, `https://${host}/.default`))
+      .access_token;
+    spTokens.set(host, t);
+    return t;
+  };
+
+  // Idempotencia: ids ya ingeridos.
   const seen = new Set(
     (
       await query<{ external_id: string }>(
@@ -64,41 +113,53 @@ export async function runTeamsSyncForConnection(
       )
     ).map((r) => r.external_id)
   );
-  const nuevos = transcripts.filter((t) => !seen.has(extId(t.id)));
-  if (nuevos.length === 0) {
-    return { ...EMPTY, encontrados: transcripts.length };
-  }
+  const nuevos = recordings.filter((r) => !seen.has(extId(r.id)));
+  if (nuevos.length === 0) return { ...EMPTY, encontrados: recordings.length };
 
   const ctx = await loadIngestContext(scope);
   const procesados: TeamsSyncResult["detalle"]["procesados"] = [];
   const errores: TeamsSyncResult["detalle"]["errores"] = [];
 
-  for (const t of nuevos) {
+  for (const rec of nuevos) {
     try {
-      const vtt = await getTranscriptContent(appToken, conn.ms_user_id, t.meetingId, t.id);
-      const text = parseVtt(vtt);
-      if (!text) throw new Error("Transcripción vacía tras procesarla");
+      const spToken = await spTokenFor(rec.host);
 
+      // Chequeo barato: ¿hay transcripción embebida? Si no, saltar SIN marcar
+      // visto (puede aparecer luego), pero sin descargar el video.
+      const tieneAlt = await hasAlternateContentStreams(
+        spToken,
+        rec.siteUrl,
+        rec.serverRelativeUrl
+      );
+      if (!tieneAlt) continue;
+
+      const rawJson = await getRecordingTranscript(spToken, rec.siteUrl, rec.serverRelativeUrl);
+      const text = rawJson ? parseStreamTranscript(rawJson) : "";
+      if (!text) continue; // sin transcript usable (raro); se reintenta luego
+
+      const fecha = rec.createdDateTime ? rec.createdDateTime.slice(0, 10) : "";
+      const titulo = tituloDeGrabacion(rec.name);
       const meta: string[] = [];
-      if (t.createdDateTime) meta.push(`Fecha: ${t.createdDateTime}`);
-      if (t.organizer) meta.push(`Organizador: ${t.organizer}`);
-      const body = meta.length ? `${meta.join("\n")}\n\n---\n\n${text}` : text;
+      if (fecha) meta.push(`Fecha: ${fecha}`);
+      meta.push(`Grabación: ${rec.name}`);
+      const body = `${meta.join("\n")}\n\n---\n\n${text}`;
 
-      const fecha = t.createdDateTime ? t.createdDateTime.slice(0, 10) : "";
-      const r = await ingestText(body, `Reunión de Teams ${fecha}`.trim(), ctx, {
+      const hint = fecha ? `${titulo} (${fecha})` : titulo;
+      const r = await ingestText(body, hint, ctx, {
         source: "teams",
         tipo: "transcripcion",
+        ...(rec.createdDateTime ? { created: rec.createdDateTime } : {}),
       });
 
+      // Idempotencia: asociar el id de la grabación a la nota creada.
       await query(`update notes set external_id = $1 where id = $2`, [
-        extId(t.id),
+        extId(rec.id),
         r.id,
       ]).catch((e) => console.error("[teams] external_id:", e));
-
       procesados.push({ id: r.id, titulo: r.title });
     } catch (err) {
       errores.push({
-        transcript: t.id,
+        transcript: rec.name,
         error: err instanceof Error ? err.message : String(err),
       });
     }
@@ -107,7 +168,7 @@ export async function runTeamsSyncForConnection(
   await rebuildMoc(scope).catch((e) => console.error("[teams] rebuildMoc:", e));
 
   return {
-    encontrados: transcripts.length,
+    encontrados: recordings.length,
     procesados: procesados.length,
     fallidos: errores.length,
     detalle: { procesados, errores },

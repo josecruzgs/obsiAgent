@@ -53,6 +53,42 @@ export function parseVtt(raw: string): string {
   return out.join("\n").trim();
 }
 
+/**
+ * Convierte el JSON de transcripción de Microsoft Stream (el que va embebido en
+ * las grabaciones .mp4 de Teams, schema stream.office.com/.../transcript.json)
+ * en texto "Hablante: frase", colapsando turnos consecutivos del mismo hablante.
+ */
+export function parseStreamTranscript(raw: string): string {
+  let data: { entries?: { text?: string; speakerDisplayName?: string }[] };
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return "";
+  }
+  const out: string[] = [];
+  let lastSpeaker = "";
+  for (const e of data.entries ?? []) {
+    const text = (e.text ?? "").trim();
+    if (!text) continue;
+    const speaker = (e.speakerDisplayName ?? "").trim();
+    if (speaker && speaker !== lastSpeaker) {
+      out.push(`${speaker}: ${text}`);
+      lastSpeaker = speaker;
+    } else {
+      out.push(text);
+      if (!speaker) lastSpeaker = "";
+    }
+  }
+  return out.join("\n").trim();
+}
+
+/** ¿El texto es un JSON de transcripción de Stream? */
+export function isStreamTranscript(text: string): boolean {
+  return (
+    text.includes("transcript.json") || /"type"\s*:\s*"Transcript"/.test(text)
+  );
+}
+
 /** Extrae texto a partir de un buffer en memoria (subida web). */
 export async function extractTextFromBuffer(
   filename: string,

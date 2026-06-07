@@ -1,6 +1,7 @@
 // Cliente mínimo de Microsoft Graph para OneDrive: OAuth (authorization code +
 // refresh) y operaciones de archivos (listar carpeta, descargar, crear carpeta,
 // mover). La persistencia/rotación del refresh_token vive en `connections` (DB).
+import { Unzip, UnzipInflate } from "fflate";
 import { env } from "./env";
 
 const AUTHORITY = "https://login.microsoftonline.com/common/oauth2/v2.0";
@@ -105,6 +106,30 @@ export function refreshAccessToken(
     refresh_token: refreshToken,
     scope: scopesFor(full),
   });
+}
+
+/** Access token para un recurso arbitrario (p. ej. SharePoint/OneDrive REST o
+ *  Graph con `.default`) vía refresh token. NO incluye `redirect_uri` (no hace
+ *  falta en el grant refresh_token y evita AADSTS50011 en entornos locales).
+ *  `scope` típico: `https://{host}/.default`. */
+export async function tokenForScope(
+  refreshToken: string,
+  scope: string
+): Promise<TokenResponse> {
+  const body = new URLSearchParams({
+    client_id: env.microsoft.clientId,
+    client_secret: env.microsoft.clientSecret,
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+    scope,
+  });
+  const res = await fetch(`${AUTHORITY}/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  if (!res.ok) throw new Error(`OAuth token ${res.status}: ${await res.text()}`);
+  return (await res.json()) as TokenResponse;
 }
 
 async function graph(
@@ -302,6 +327,200 @@ export async function getTranscriptContent(
     throw new Error(`Graph transcript content ${res.status}: ${await res.text()}`);
   }
   return res.text();
+}
+
+// ─── Grabaciones de Teams en OneDrive (Camino: leer el transcript embebido) ──
+// Las reuniones organizadas por terceros (otros tenants) no se alcanzan con
+// getAllTranscripts, pero su grabación cae en el OneDrive de quien graba. El
+// .mp4 lleva la transcripción como "alternate content stream"; se descarga el
+// archivo con todas sus streams (API REST de SharePoint) y se extrae el JSON
+// de transcripción de Stream sin bufferizar el video en memoria.
+
+export interface RecordingItem {
+  id: string;
+  name: string;
+  webUrl: string;
+  siteUrl: string; // colección de sitio para las llamadas _api
+  serverRelativeUrl: string; // ruta del archivo dentro del sitio
+  host: string; // p. ej. iagent369-my.sharepoint.com
+  createdDateTime?: string;
+  size?: number;
+}
+
+/** Lista los .mp4 de una carpeta de grabaciones (token delegado de Graph).
+ *  Devuelve [] si la carpeta no existe. */
+export async function listRecordings(
+  graphToken: string,
+  folder: string
+): Promise<RecordingItem[]> {
+  const url =
+    `${GRAPH}/me/drive/root:/${encPath(folder)}:/children` +
+    `?$select=id,name,size,webUrl,file,createdDateTime,sharepointIds&$top=200`;
+  const out: RecordingItem[] = [];
+  let next = url;
+  while (next) {
+    const res = await graph(graphToken, next);
+    if (res.status === 404) return out;
+    if (!res.ok) {
+      throw new Error(`Graph children ${res.status}: ${await res.text()}`);
+    }
+    const j = (await res.json()) as {
+      value?: Array<{
+        id: string;
+        name: string;
+        size?: number;
+        webUrl?: string;
+        createdDateTime?: string;
+        file?: { mimeType?: string };
+        sharepointIds?: { siteUrl?: string };
+      }>;
+      "@odata.nextLink"?: string;
+    };
+    for (const c of j.value ?? []) {
+      if (!c.file || !/\.mp4$/i.test(c.name) || !c.webUrl) continue;
+      let host = "";
+      let serverRelativeUrl = "";
+      try {
+        const u = new URL(c.webUrl);
+        host = u.host;
+        serverRelativeUrl = decodeURIComponent(u.pathname);
+      } catch {
+        continue;
+      }
+      out.push({
+        id: c.id,
+        name: c.name,
+        webUrl: c.webUrl,
+        host,
+        serverRelativeUrl,
+        siteUrl: c.sharepointIds?.siteUrl || `https://${host}`,
+        createdDateTime: c.createdDateTime,
+        size: c.size,
+      });
+    }
+    next = j["@odata.nextLink"] ?? "";
+  }
+  return out;
+}
+
+/** ¿La grabación trae alternate content streams (transcripción embebida)?
+ *  Chequeo barato (sin descargar el video) para no bajar archivos sin transcript. */
+export async function hasAlternateContentStreams(
+  spToken: string,
+  siteUrl: string,
+  serverRelativeUrl: string
+): Promise<boolean> {
+  const apiUrl =
+    `${siteUrl}/_api/web/GetFileByServerRelativeUrl(` +
+    `'${serverRelativeUrl.replace(/'/g, "''")}')/HasAlternateContentStreams`;
+  const res = await fetch(apiUrl, {
+    headers: {
+      Authorization: `Bearer ${spToken}`,
+      Accept: "application/json;odata=nometadata",
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`SharePoint HasAltStreams ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  }
+  const j = (await res.json()) as { value?: boolean };
+  return j.value === true;
+}
+
+/** Descarga una grabación con sus alternate streams (zip de la API de migración
+ *  de SharePoint) y extrae SOLO el JSON de transcripción de Stream, en streaming
+ *  (no acumula el video). Devuelve el texto crudo del JSON, o null si no hay. */
+export async function getRecordingTranscript(
+  spToken: string,
+  siteUrl: string,
+  serverRelativeUrl: string
+): Promise<string | null> {
+  const dlUrl =
+    `${siteUrl}/_api/web/GetFileByServerRelativeUrl(` +
+    `'${serverRelativeUrl.replace(/'/g, "''")}')` +
+    `/OpenBinaryStreamWithOptions(openOptions=1048576)`; // GetAsZipWithAltStreams
+  const res = await fetch(dlUrl, { headers: { Authorization: `Bearer ${spToken}` } });
+  if (!res.ok || !res.body) {
+    const detail = res.ok ? "sin cuerpo" : (await res.text().catch(() => "")).slice(0, 200);
+    throw new Error(`SharePoint download ${res.status}: ${detail}`);
+  }
+
+  const dec = new TextDecoder();
+  const small: Uint8Array[][] = []; // streams chicas candidatas (texto/JSON)
+
+  return await new Promise<string | null>((resolve, reject) => {
+    const unzip = new Unzip();
+    unzip.register(UnzipInflate);
+    let pending = 0;
+    let streamDone = false;
+    const tryResolve = () => {
+      if (!streamDone || pending > 0) return;
+      for (const parts of small) {
+        const text = dec.decode(concatChunks(parts));
+        if (text.includes("transcript.json") || /"type"\s*:\s*"Transcript"/.test(text)) {
+          resolve(text);
+          return;
+        }
+      }
+      resolve(null);
+    };
+
+    unzip.onfile = (file) => {
+      // El stream primario (video) puede ser enorme: lo procesamos pero NO lo
+      // acumulamos. Solo guardamos streams pequeñas (la transcripción ~KB).
+      const isPrimary = /Primary$/i.test(file.name);
+      const parts: Uint8Array[] = [];
+      let bytes = 0;
+      const MAX_TEXT = 5 * 1024 * 1024; // descarta cualquier stream "chica" >5MB
+      let keep = !isPrimary;
+      pending++;
+      file.ondata = (err, chunk, final) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        if (keep && chunk) {
+          bytes += chunk.length;
+          if (bytes > MAX_TEXT) {
+            keep = false;
+            parts.length = 0;
+          } else {
+            parts.push(chunk);
+          }
+        }
+        if (final) {
+          if (keep && parts.length) small.push(parts);
+          pending--;
+          tryResolve();
+        }
+      };
+      file.start();
+    };
+
+    const reader = res.body!.getReader();
+    const pump = (): Promise<void> =>
+      reader.read().then(({ done, value }) => {
+        if (done) {
+          unzip.push(new Uint8Array(0), true);
+          streamDone = true;
+          tryResolve();
+          return;
+        }
+        unzip.push(value, false);
+        return pump();
+      });
+    pump().catch(reject);
+  });
+}
+
+function concatChunks(parts: Uint8Array[]): Uint8Array {
+  const total = parts.reduce((n, p) => n + p.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const p of parts) {
+    out.set(p, off);
+    off += p.length;
+  }
+  return out;
 }
 
 /** Mueve un item a la carpeta destino (por id). Renombra si hay colisión. */
