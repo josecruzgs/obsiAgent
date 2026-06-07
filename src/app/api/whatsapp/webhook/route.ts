@@ -57,6 +57,8 @@ export async function POST(req: NextRequest) {
 
   // Procesa de forma asíncrona; responde 200 rápido al webhook.
   for (const msg of items) {
+    // DEBUG TEMPORAL: ver la forma real del mensaje entrante (jid/LID/número).
+    console.log("[whatsapp] inbound:", JSON.stringify(msg).slice(0, 800));
     const jid = msg.key?.remoteJid ?? "";
     const fromMe = msg.key?.fromMe ?? false;
     const text = extractText(msg);
