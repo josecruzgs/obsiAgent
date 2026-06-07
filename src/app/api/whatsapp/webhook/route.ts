@@ -88,8 +88,9 @@ async function processMessage(msg: EvolutionMessage): Promise<void> {
   }
   const phone = phoneJid.split("@")[0];
 
-  // Destinos de respuesta, en orden de preferencia (identidad original primero).
-  const targets = jid === phoneJid ? [jid] : [jid, phoneJid];
+  // Responder al teléfono real (Evolution no acepta enviar al @lid). Se deja
+  // como lista por si en el futuro hay más de un destino/fallback.
+  const targets = [phoneJid];
 
   if (!isAllowed(phone)) {
     console.log(`[whatsapp] número no autorizado: ${phone}`);
