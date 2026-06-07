@@ -24,12 +24,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # Permite alcanzar servicios publicados en el HOST (p. ej. evolution-api en
-    # :8085) desde este contenedor vía http://host.docker.internal:<puerto>.
+    # Permite alcanzar servicios publicados en el HOST vía host.docker.internal.
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
       - backend                     # red privada para hablar con la DB
+      - evo                         # red del proyecto Evolution (tomalab) para
+                                    # llamar a http://tomalab-evolution-api:8080
 
   # ─── Base de datos (Postgres + pgvector) ───────────────────────────────
   db:
@@ -61,3 +62,8 @@ volumes:
 
 networks:
   backend:
+  # Red EXTERNA del proyecto Evolution (tomalab), ya existente, para que
+  # obsiAgent alcance a tomalab-evolution-api por su nombre de contenedor.
+  evo:
+    external: true
+    name: tomalab_tomalab-net
