@@ -167,7 +167,7 @@ function ScopeCard({
     setSyncingTeams(true);
     setTeams(null);
     try {
-      const res = await fetch("/api/teams/sync", { method: "POST" });
+      const res = await fetch(`/api/teams/sync?scope=${kind}`, { method: "POST" });
       const d = await res.json();
       setTeams(
         d.ok
@@ -224,26 +224,28 @@ function ScopeCard({
             </button>
           </div>
 
-          {kind === "company" && (
-            <div style={{ marginTop: 12 }}>
-              <button
-                type="button"
-                className="secondary"
-                onClick={syncTeams}
-                disabled={syncingTeams}
+          <div style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className="secondary"
+              onClick={syncTeams}
+              disabled={syncingTeams}
+            >
+              {syncingTeams ? "Trayendo transcripciones…" : "Sincronizar Teams (transcripciones)"}
+            </button>
+            <p className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+              Trae las transcripciones de tus reuniones de Teams (requiere cuenta de
+              trabajo M365).
+            </p>
+            {teams && (
+              <p
+                className={teams.startsWith("✓") ? "success" : "error"}
+                style={{ marginTop: 8, fontSize: 13 }}
               >
-                {syncingTeams ? "Trayendo transcripciones…" : "Sincronizar Teams (transcripciones)"}
-              </button>
-              {teams && (
-                <p
-                  className={teams.startsWith("✓") ? "success" : "error"}
-                  style={{ marginTop: 8, fontSize: 13 }}
-                >
-                  {teams}
-                </p>
-              )}
-            </div>
-          )}
+                {teams}
+              </p>
+            )}
+          </div>
 
           {data.lastSync && (
             <p className="muted" style={{ marginTop: 12 }}>

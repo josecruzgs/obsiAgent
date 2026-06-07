@@ -1,17 +1,21 @@
-// Trae las transcripciones de reuniones de Teams (Microsoft Graph) usando el token
-// de la conexión EMPRESARIAL (cuenta M365) y las ingiere como notas empresariales.
-// Idempotente por external_id ("teams:<transcriptId>"): no reingiere lo ya hecho.
-import { getConnection } from "./connections";
+// Sincroniza las transcripciones de Teams de UNA conexión hacia su ámbito:
+//  - conexión empresarial -> base empresarial
+//  - conexión personal     -> base personal del usuario
+// Usa app-only por-tenant (tenant_id + ms_user_id capturados al conectar).
+// Idempotente por external_id ("teams:<transcriptId>").
+import {
+  getConnection,
+  scopeOfConnection,
+  type OneDriveConnection,
+} from "./connections";
 import {
   getAppToken,
-  resolveUserId,
   getAllTranscripts,
   getTranscriptContent,
 } from "./onedrive";
 import { parseVtt } from "./extract";
 import { query } from "./db";
-import { getBootstrapCompany } from "./tenancy";
-import { companyScope } from "./scope";
+import { type Scope } from "./scope";
 import { loadIngestContext, ingestText } from "./ingest";
 import { rebuildMoc } from "./moc";
 
@@ -27,24 +31,32 @@ export interface TeamsSyncResult {
 
 const extId = (transcriptId: string) => `teams:${transcriptId}`;
 
-export async function runTeamsSync(): Promise<TeamsSyncResult> {
-  const company = await getBootstrapCompany();
-  const scope = companyScope(company.id);
+const EMPTY: TeamsSyncResult = {
+  encontrados: 0,
+  procesados: 0,
+  fallidos: 0,
+  detalle: { procesados: [], errores: [] },
+};
 
-  // El organizador es la cuenta M365 con la que se conectó la base empresarial.
-  const conn = await getConnection(scope);
-  if (!conn?.account) {
+/** ¿La conexión puede traer Teams? (cuenta de trabajo con tenant + user id). */
+export function teamsEligible(conn: OneDriveConnection | null): boolean {
+  return Boolean(conn?.refresh_token && conn?.tenant_id && conn?.ms_user_id);
+}
+
+/** Sincroniza una conexión concreta hacia su ámbito. */
+export async function runTeamsSyncForConnection(
+  conn: OneDriveConnection
+): Promise<TeamsSyncResult> {
+  if (!conn.tenant_id || !conn.ms_user_id) {
     throw new Error(
-      "Conecta la base empresarial con la cuenta M365 (de ahí sale el organizador)."
+      "Esta conexión no es de una cuenta de trabajo (Teams no disponible). Reconéctala con tu cuenta M365."
     );
   }
 
-  // App-only: token de aplicación + GUID del organizador.
-  const appToken = await getAppToken();
-  const userId = await resolveUserId(appToken, conn.account);
-  const transcripts = await getAllTranscripts(appToken, userId);
+  const scope = scopeOfConnection(conn);
+  const appToken = await getAppToken(conn.tenant_id);
+  const transcripts = await getAllTranscripts(appToken, conn.ms_user_id);
 
-  // external_ids ya ingeridos -> para no duplicar.
   const seen = new Set(
     (
       await query<{ external_id: string }>(
@@ -53,24 +65,17 @@ export async function runTeamsSync(): Promise<TeamsSyncResult> {
     ).map((r) => r.external_id)
   );
   const nuevos = transcripts.filter((t) => !seen.has(extId(t.id)));
-
-  const procesados: TeamsSyncResult["detalle"]["procesados"] = [];
-  const errores: TeamsSyncResult["detalle"]["errores"] = [];
-
   if (nuevos.length === 0) {
-    return {
-      encontrados: transcripts.length,
-      procesados: 0,
-      fallidos: 0,
-      detalle: { procesados, errores },
-    };
+    return { ...EMPTY, encontrados: transcripts.length };
   }
 
   const ctx = await loadIngestContext(scope);
+  const procesados: TeamsSyncResult["detalle"]["procesados"] = [];
+  const errores: TeamsSyncResult["detalle"]["errores"] = [];
 
   for (const t of nuevos) {
     try {
-      const vtt = await getTranscriptContent(appToken, userId, t.meetingId, t.id);
+      const vtt = await getTranscriptContent(appToken, conn.ms_user_id, t.meetingId, t.id);
       const text = parseVtt(vtt);
       if (!text) throw new Error("Transcripción vacía tras procesarla");
 
@@ -80,8 +85,7 @@ export async function runTeamsSync(): Promise<TeamsSyncResult> {
       const body = meta.length ? `${meta.join("\n")}\n\n---\n\n${text}` : text;
 
       const fecha = t.createdDateTime ? t.createdDateTime.slice(0, 10) : "";
-      const hint = `Reunión de Teams ${fecha}`.trim();
-      const r = await ingestText(body, hint, ctx, {
+      const r = await ingestText(body, `Reunión de Teams ${fecha}`.trim(), ctx, {
         source: "teams",
         tipo: "transcripcion",
       });
@@ -108,4 +112,13 @@ export async function runTeamsSync(): Promise<TeamsSyncResult> {
     fallidos: errores.length,
     detalle: { procesados, errores },
   };
+}
+
+/** Sincroniza el Teams de un ámbito (para la UI). */
+export async function runTeamsSyncForScope(scope: Scope): Promise<TeamsSyncResult> {
+  const conn = await getConnection(scope);
+  if (!conn?.refresh_token) {
+    throw new Error("OneDrive no está conectado en este ámbito.");
+  }
+  return runTeamsSyncForConnection(conn);
 }

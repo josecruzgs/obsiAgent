@@ -2,7 +2,7 @@
 // tokens y guarda la conexión en el ámbito indicado (cookie od_scope).
 import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
-import { exchangeCode, getAccount } from "@/lib/onedrive";
+import { exchangeCode, getAccount, identityFromToken } from "@/lib/onedrive";
 import { getCurrentUser } from "@/lib/currentUser";
 import { upsertConnection } from "@/lib/connections";
 import { companyScope, personalScope } from "@/lib/scope";
@@ -39,11 +39,17 @@ export async function GET(req: NextRequest) {
       throw new Error("Microsoft no devolvió refresh_token (revisa offline_access).");
     }
     const account = await getAccount(tok.access_token).catch(() => "");
+    const { tenantId, userId } = identityFromToken(tok); // tid + oid (para Teams)
     const scope =
       scopeKind === "company"
         ? companyScope(user.company_id)
         : personalScope(user.company_id, user.id);
-    await upsertConnection(scope, { refresh_token: tok.refresh_token, account });
+    await upsertConnection(scope, {
+      refresh_token: tok.refresh_token,
+      account,
+      tenant_id: tenantId ?? null,
+      ms_user_id: userId ?? null,
+    });
 
     const res = back("connected=1");
     res.cookies.delete("od_state");

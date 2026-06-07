@@ -6,8 +6,9 @@ import { env } from "./env";
 const AUTHORITY = "https://login.microsoftonline.com/common/oauth2/v2.0";
 const GRAPH = "https://graph.microsoft.com/v1.0";
 
-// offline_access -> refresh_token; Files.ReadWrite -> leer y mover archivos.
-const SCOPES_BASIC = "offline_access User.Read Files.ReadWrite";
+// offline_access -> refresh_token; Files.ReadWrite -> archivos; openid/profile ->
+// id_token (de ahí sacamos tenant id + user id para Teams app-only por-tenant).
+const SCOPES_BASIC = "openid profile offline_access User.Read Files.ReadWrite";
 // Solo la conexión EMPRESARIAL (M365) pide además leer transcripciones de Teams.
 // (Las cuentas personales outlook.com no soportan estos permisos.)
 const SCOPES_FULL =
@@ -43,7 +44,26 @@ export function authorizeUrl(state: string, full = false): string {
 export interface TokenResponse {
   access_token: string;
   refresh_token?: string;
+  id_token?: string;
   expires_in: number;
+}
+
+/** Extrae tenant id (tid) y user id (oid) del id_token de una respuesta OAuth. */
+export function identityFromToken(tok: TokenResponse): {
+  tenantId?: string;
+  userId?: string;
+} {
+  if (!tok.id_token) return {};
+  try {
+    const part = tok.id_token.split(".")[1];
+    const pad = part.length % 4 ? "=".repeat(4 - (part.length % 4)) : "";
+    const claims = JSON.parse(
+      Buffer.from(part.replace(/-/g, "+").replace(/_/g, "/") + pad, "base64").toString("utf8")
+    ) as { tid?: string; oid?: string };
+    return { tenantId: claims.tid, userId: claims.oid };
+  } catch {
+    return {};
+  }
 }
 
 async function tokenRequest(
@@ -199,10 +219,9 @@ export interface MeetingTranscript {
   organizer?: string;
 }
 
-/** Token app-only (client_credentials) para Microsoft Graph. */
-export async function getAppToken(): Promise<string> {
-  const tenant = env.microsoft.tenantId;
-  if (!tenant) throw new Error("Falta MS_TENANT_ID en el .env (Directory ID).");
+/** Token app-only (client_credentials) para Microsoft Graph en un tenant dado. */
+export async function getAppToken(tenantId: string): Promise<string> {
+  if (!tenantId) throw new Error("Falta el tenant de la conexión.");
   const body = new URLSearchParams({
     client_id: env.microsoft.clientId,
     client_secret: env.microsoft.clientSecret,
@@ -210,7 +229,7 @@ export async function getAppToken(): Promise<string> {
     scope: "https://graph.microsoft.com/.default",
   });
   const res = await fetch(
-    `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`,
+    `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
     {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -219,16 +238,6 @@ export async function getAppToken(): Promise<string> {
   );
   if (!res.ok) throw new Error(`App token ${res.status}: ${await res.text()}`);
   return ((await res.json()) as { access_token: string }).access_token;
-}
-
-/** Resuelve el GUID de un usuario a partir de su UPN/email (token app-only). */
-export async function resolveUserId(
-  appToken: string,
-  upn: string
-): Promise<string> {
-  const res = await graph(appToken, `/users/${encodeURIComponent(upn)}?$select=id`);
-  if (!res.ok) throw new Error(`Graph /users/${upn} ${res.status}: ${await res.text()}`);
-  return ((await res.json()) as { id: string }).id;
 }
 
 /** Lista todas las transcripciones de reuniones organizadas por `userId`. */

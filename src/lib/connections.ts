@@ -20,6 +20,8 @@ export interface OneDriveConnection {
   account: string | null;
   folder: string;
   last_sync: SyncSummary | null;
+  tenant_id: string | null; // tid de Microsoft (para Teams app-only)
+  ms_user_id: string | null; // oid/GUID del usuario (organizador de reuniones)
 }
 
 export interface ConnectionPatch {
@@ -27,15 +29,19 @@ export interface ConnectionPatch {
   account?: string | null;
   folder?: string;
   last_sync?: SyncSummary | null;
+  tenant_id?: string | null;
+  ms_user_id?: string | null;
 }
+
+const COLS =
+  "id, company_id, owner_user_id, refresh_token, account, folder, last_sync, tenant_id, ms_user_id";
 
 export async function getConnection(
   scope: Scope
 ): Promise<OneDriveConnection | null> {
   await ensureTenancy();
   const rows = await query<OneDriveConnection>(
-    `select id, company_id, owner_user_id, refresh_token, account, folder, last_sync
-     from onedrive_connections
+    `select ${COLS} from onedrive_connections
      where company_id = $1 and owner_user_id is not distinct from $2`,
     [scope.companyId, scope.userId]
   );
@@ -48,24 +54,31 @@ export async function upsertConnection(
 ): Promise<OneDriveConnection> {
   await ensureTenancy();
   const cur = await getConnection(scope);
+  const pick = <T>(v: T | undefined, fallback: T | null | undefined): T | null =>
+    v !== undefined ? v : fallback ?? null;
+
   const folder = patch.folder ?? cur?.folder ?? "ObsiAgent";
-  const refresh = patch.refresh_token !== undefined ? patch.refresh_token : cur?.refresh_token ?? null;
-  const account = patch.account !== undefined ? patch.account : cur?.account ?? null;
-  const lastSync = patch.last_sync !== undefined ? patch.last_sync : cur?.last_sync ?? null;
+  const refresh = pick(patch.refresh_token, cur?.refresh_token);
+  const account = pick(patch.account, cur?.account);
+  const tenantId = pick(patch.tenant_id, cur?.tenant_id);
+  const msUserId = pick(patch.ms_user_id, cur?.ms_user_id);
+  const lastSync = pick(patch.last_sync, cur?.last_sync);
   const lastSyncJson = lastSync ? JSON.stringify(lastSync) : null;
 
   if (cur) {
     await query(
       `update onedrive_connections
-         set refresh_token = $3, account = $4, folder = $5, last_sync = $6, updated_at = now()
+         set refresh_token = $3, account = $4, folder = $5, last_sync = $6,
+             tenant_id = $7, ms_user_id = $8, updated_at = now()
        where company_id = $1 and owner_user_id is not distinct from $2`,
-      [scope.companyId, scope.userId, refresh, account, folder, lastSyncJson]
+      [scope.companyId, scope.userId, refresh, account, folder, lastSyncJson, tenantId, msUserId]
     );
   } else {
     await query(
-      `insert into onedrive_connections (company_id, owner_user_id, refresh_token, account, folder, last_sync)
-       values ($1, $2, $3, $4, $5, $6)`,
-      [scope.companyId, scope.userId, refresh, account, folder, lastSyncJson]
+      `insert into onedrive_connections
+         (company_id, owner_user_id, refresh_token, account, folder, last_sync, tenant_id, ms_user_id)
+       values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [scope.companyId, scope.userId, refresh, account, folder, lastSyncJson, tenantId, msUserId]
     );
   }
   return (await getConnection(scope))!;
@@ -84,8 +97,7 @@ export async function disconnect(scope: Scope): Promise<void> {
 export async function listConnectedConnections(): Promise<OneDriveConnection[]> {
   await ensureTenancy();
   return query<OneDriveConnection>(
-    `select id, company_id, owner_user_id, refresh_token, account, folder, last_sync
-     from onedrive_connections where refresh_token is not null`
+    `select ${COLS} from onedrive_connections where refresh_token is not null`
   );
 }
 

@@ -75,6 +75,10 @@ async function run(): Promise<void> {
     last_sync     jsonb,
     updated_at    timestamptz default now()
   )`);
+  // Identidad Microsoft de la cuenta conectada, para Teams app-only por-tenant:
+  // tenant_id (tid) y ms_user_id (oid/GUID del usuario). Se capturan al conectar.
+  await query(`alter table onedrive_connections add column if not exists tenant_id text`);
+  await query(`alter table onedrive_connections add column if not exists ms_user_id text`);
   // Una sola conexión empresarial por empresa, y una personal por usuario.
   await query(
     `create unique index if not exists onedrive_conn_company_uidx
