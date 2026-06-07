@@ -148,7 +148,7 @@ export default function NotasPage() {
             {total} nota(s){q ? ` para “${q}”` : ""}
           </p>
 
-          <div style={{ maxHeight: 440, overflowY: "auto" }}>
+          <div className="notas-list-scroll">
             {notes.map((n) => (
               <div
                 key={n.id}

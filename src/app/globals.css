@@ -1061,9 +1061,16 @@ code {
 /* ─── Página Notas ───────────────────────────────────────────────────── */
 .notas-layout {
   display: grid;
-  grid-template-columns: 330px 1fr;
+  grid-template-columns: minmax(380px, 440px) 1fr;
   gap: 18px;
   align-items: start;
+}
+/* En pantallas grandes la lista aprovecha el alto de la ventana y hace scroll
+   interno (la búsqueda y la paginación quedan fijas dentro de la tarjeta). */
+.notas-list-scroll {
+  overflow-y: auto;
+  max-height: calc(100vh - 240px);
+  min-height: 360px;
 }
 .nota-item {
   transition: background 0.14s ease;
@@ -1174,5 +1181,10 @@ code {
   }
   .notas-layout {
     grid-template-columns: 1fr;
+  }
+  /* Apilado en móvil/tablet: la lista no necesita el alto completo. */
+  .notas-list-scroll {
+    max-height: 440px;
+    min-height: 0;
   }
 }
