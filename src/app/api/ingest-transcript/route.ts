@@ -19,6 +19,7 @@ import { getBootstrapCompany } from "@/lib/tenancy";
 import { companyScope } from "@/lib/scope";
 import { loadIngestContext, ingestText } from "@/lib/ingest";
 import { rebuildMoc } from "@/lib/moc";
+import { query } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -26,6 +27,7 @@ export const maxDuration = 120;
 const bodySchema = z.object({
   transcript: z.string().min(1, "transcript vacío"),
   title: z.string().optional(),
+  externalId: z.string().optional(), // id de la transcripción (idempotencia)
   meeting: z
     .object({
       subject: z.string().optional(),
@@ -50,16 +52,19 @@ export async function POST(req: NextRequest) {
     //  - application/json: { transcript, title?, meeting? }  (curl/pruebas)
     //  - cualquier otro:   el cuerpo crudo ES la transcripción; el título va en
     //    el header "x-title" o ?title=  (más fácil para Power Automate: sin JSON).
+    const url = new URL(req.url);
     const ct = req.headers.get("content-type") || "";
     let transcript: string;
     let title: string | undefined;
+    let externalId: string | undefined;
     let meeting: z.infer<typeof bodySchema>["meeting"];
 
     if (ct.includes("application/json")) {
-      ({ transcript, title, meeting } = bodySchema.parse(await req.json()));
+      ({ transcript, title, externalId, meeting } = bodySchema.parse(
+        await req.json()
+      ));
     } else {
       transcript = await req.text();
-      const url = new URL(req.url);
       title =
         req.headers.get("x-title") ||
         url.searchParams.get("title") ||
@@ -73,6 +78,22 @@ export async function POST(req: NextRequest) {
           { ok: false, error: "Cuerpo vacío (se esperaba la transcripción)." },
           { status: 400 }
         );
+      }
+    }
+    externalId =
+      externalId ||
+      req.headers.get("x-external-id") ||
+      url.searchParams.get("externalId") ||
+      undefined;
+
+    // Idempotencia: si ya ingerimos esta transcripción, no la dupliques.
+    if (externalId) {
+      const [dup] = await query<{ id: string }>(
+        `select id from notes where external_id = $1`,
+        [externalId]
+      );
+      if (dup) {
+        return NextResponse.json({ ok: true, skipped: true, id: dup.id });
       }
     }
 
@@ -104,6 +125,14 @@ export async function POST(req: NextRequest) {
       source: "teams",
       tipo: "transcripcion",
     });
+
+    // Marca la nota con el id externo para la idempotencia del sondeo.
+    if (externalId) {
+      await query(`update notes set external_id = $1 where id = $2`, [
+        externalId,
+        r.id,
+      ]).catch((e) => console.error("[ingest-transcript] external_id:", e));
+    }
 
     await rebuildMoc(scope).catch((e) =>
       console.error("[ingest-transcript] rebuildMoc:", e)

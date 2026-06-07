@@ -56,6 +56,14 @@ async function run(): Promise<void> {
     `create index if not exists notes_scope_idx on notes (company_id, owner_user_id)`
   );
 
+  // Clave externa para idempotencia (p.ej. id de transcripción de Teams): evita
+  // reingerir la misma fuente cuando un flujo de sondeo la manda varias veces.
+  await query(`alter table notes add column if not exists external_id text`);
+  await query(
+    `create unique index if not exists notes_external_id_uidx
+       on notes (external_id) where external_id is not null`
+  );
+
   // Conexiones a OneDrive por ámbito: empresarial (owner null) o personal (por usuario).
   await query(`create table if not exists onedrive_connections (
     id            uuid primary key default gen_random_uuid(),
