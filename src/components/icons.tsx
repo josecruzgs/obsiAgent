@@ -148,6 +148,19 @@ export function IconUsers(p: SVGProps<SVGSVGElement>) {
   );
 }
 
+// Hub con satélites (para la página de agentes).
+export function IconAgents(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...svgProps(p)}>
+      <circle cx="12" cy="12" r="3" />
+      <circle cx="12" cy="4" r="1.6" />
+      <circle cx="19" cy="16" r="1.6" />
+      <circle cx="5" cy="16" r="1.6" />
+      <path d="M12 9V5.6M13.6 13.4 17.7 15.3M10.4 13.4 6.3 15.3" />
+    </svg>
+  );
+}
+
 export function IconLogout(p: SVGProps<SVGSVGElement>) {
   return (
     <svg {...svgProps(p)}>

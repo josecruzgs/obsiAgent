@@ -4,6 +4,7 @@
 // buscador, etc.). Cada agente = system prompt + subconjunto de herramientas.
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "../env";
+import { recordStart, recordEnd } from "./activity";
 
 // Cliente perezoso (no instancia al importar; igual que claude.ts).
 let _client: Anthropic | null = null;
@@ -58,9 +59,12 @@ export async function runAgent(opts: RunAgentOptions): Promise<RunAgentResult> {
   const toolCalls: { name: string; input: unknown }[] = [];
   const tag = opts.label ? `agent:${opts.label}` : "agent";
 
+  const key = opts.label ?? "agent";
+  recordStart(key);
   let steps = 0;
   let lastText = "";
 
+  try {
   while (steps < maxSteps) {
     steps++;
     const resp = await client().messages.create({
@@ -128,5 +132,8 @@ export async function runAgent(opts: RunAgentOptions): Promise<RunAgentResult> {
     return { text: textOf(final.content) || lastText, steps, toolCalls };
   } catch {
     return { text: lastText, steps, toolCalls };
+  }
+  } finally {
+    recordEnd(key, toolCalls.map((c) => c.name));
   }
 }

@@ -1198,3 +1198,141 @@ code {
     min-height: 0;
   }
 }
+
+/* ─── Página de Agentes (diagrama radial + brillos) ───────────────────── */
+.agents-stage {
+  position: relative;
+  width: 100%;
+  max-width: 620px;
+  margin: 18px auto 8px;
+  aspect-ratio: 1 / 1;
+}
+.agents-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.agents-line {
+  stroke: var(--border);
+  stroke-width: 0.4;
+  transition: stroke 0.3s, stroke-width 0.3s, opacity 0.3s;
+}
+.agents-line.recent {
+  stroke: var(--accent);
+  opacity: 0.55;
+  stroke-width: 0.6;
+}
+.agents-line.working {
+  stroke: var(--accent);
+  stroke-width: 0.9;
+  stroke-dasharray: 2 1.5;
+  animation: agentsFlow 0.8s linear infinite;
+}
+@keyframes agentsFlow {
+  to {
+    stroke-dashoffset: -7;
+  }
+}
+
+.agent-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 14px;
+  min-width: 104px;
+  border-radius: 14px;
+  background: var(--panel);
+  -webkit-backdrop-filter: var(--acrylic);
+  backdrop-filter: var(--acrylic);
+  border: 1px solid var(--border);
+  text-align: center;
+  transition: box-shadow 0.35s ease, border-color 0.35s ease, transform 0.2s ease;
+}
+.agent-node strong {
+  font-size: 13.5px;
+}
+.agent-node.center {
+  min-width: 124px;
+  border-color: var(--accent-soft);
+  background: linear-gradient(135deg, var(--accent-soft), var(--panel));
+}
+.agent-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+.agent-node.soon {
+  opacity: 0.5;
+}
+.agent-node.recent {
+  border-color: var(--accent);
+  box-shadow: 0 0 18px 2px var(--accent-soft);
+}
+.agent-node.working {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft), 0 0 26px 6px var(--accent-soft);
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
+.agent-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+  opacity: 0.6;
+}
+.agent-node.recent .agent-dot,
+.agent-dot.recent {
+  background: var(--accent);
+  opacity: 1;
+}
+.agent-node.working .agent-dot,
+.agent-dot.working {
+  background: var(--accent);
+  opacity: 1;
+  animation: agentBlink 0.9s ease-in-out infinite;
+}
+.agent-dot.soon {
+  opacity: 0.3;
+}
+@keyframes agentBlink {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--accent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px transparent;
+    transform: scale(1.25);
+  }
+}
+
+.agents-list {
+  max-width: 620px;
+  margin: 18px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.agents-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.agents-row-text {
+  display: flex;
+  flex-direction: column;
+}
+.agents-row-text .muted {
+  font-size: 12.5px;
+}
+.agents-row-meta {
+  margin-left: auto;
+  font-size: 12.5px;
+  white-space: nowrap;
+}

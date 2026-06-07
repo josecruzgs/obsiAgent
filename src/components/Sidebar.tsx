@@ -10,6 +10,7 @@ import {
   IconUpload,
   IconNotes,
   IconGraph,
+  IconAgents,
   IconSettings,
   IconUsers,
   IconLogout,
@@ -20,6 +21,7 @@ const items = [
   { href: "/ingest", label: "Ingerir", icon: IconUpload },
   { href: "/notas", label: "Notas", icon: IconNotes },
   { href: "/graph", label: "Grafo", icon: IconGraph },
+  { href: "/agentes", label: "Agentes", icon: IconAgents },
   { href: "/config", label: "Configuración", icon: IconSettings },
 ];
 
