@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runAssistant } from "@/lib/agents/assistant";
 import { getBootstrapCompany, type User } from "@/lib/tenancy";
-import { sendText, isAllowed, resolvePhoneJid } from "@/lib/evolution";
+import { sendText, sendPresence, isAllowed, resolvePhoneJid } from "@/lib/evolution";
 
 // uuid imposible: hace que el filtro "personal" no devuelva nada -> solo empresarial.
 const NO_USER = "00000000-0000-0000-0000-000000000000";
@@ -95,6 +95,9 @@ async function processMessage(msg: EvolutionMessage): Promise<void> {
     ).catch((e) => console.error("[whatsapp] send error:", e));
     return;
   }
+
+  // Muestra "escribiendo…" mientras el agente piensa (mejora la espera).
+  void sendPresence(sendJid, "composing");
 
   await handleQuery(sendJid, text).catch((e) =>
     console.error("[whatsapp] handleQuery error:", e)

@@ -63,6 +63,21 @@ export async function sendText(number: string, text: string): Promise<void> {
   }
 }
 
+/** Muestra el estado "escribiendo…" en el chat (mejora la percepción de espera). */
+export async function sendPresence(
+  to: string,
+  presence: "composing" | "paused" = "composing",
+  delayMs = 4000
+): Promise<void> {
+  const { url, apiKey, instance } = env.evolution;
+  if (!url) return;
+  await fetch(`${url}/chat/sendPresence/${instance}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: apiKey },
+    body: JSON.stringify({ number: to, presence, delay: delayMs }),
+  }).catch(() => {}); // no es crítico
+}
+
 /** ¿Está permitido este número para consultar el vault? (allowlist) */
 export function isAllowed(number: string): boolean {
   const allowed = env.whatsappAllowedNumbers;

@@ -6,6 +6,7 @@ import { runAgent } from "../agent/runtime";
 import { buildUserReadTools, createNoteTool } from "../agent/tools";
 import { companyScope } from "../scope";
 import { query } from "../db";
+import { env } from "../env";
 import type { User } from "../tenancy";
 
 export interface AssistantResult {
@@ -54,8 +55,11 @@ Cómo responder:
     system,
     tools,
     prompt: question,
-    maxSteps: 6,
-    maxTokens: 1200,
+    maxSteps: 5,
+    maxTokens: 900,
+    // Modelo rápido para el chat (Haiku): prioriza latencia sobre profundidad.
+    // Los agentes de reuniones/status usan el modelo más capaz por defecto.
+    model: env.anthropicAnswerModel,
     label: opts.label ?? (opts.allowWrite ? "whatsapp" : "search"),
   });
 
