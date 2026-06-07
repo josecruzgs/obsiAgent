@@ -75,7 +75,7 @@ export default function HeaderBar() {
   if (pathname === "/login") return null;
 
   return (
-    <div className={`hero${focused ? " focused" : ""}`}>
+    <div className={`topbar${focused ? " focused" : ""}`}>
       {/* Capa que oscurece/desenfoca toda la página. Va en un portal a
           document.body para que el `transform` del hero no la confine. */}
       {mounted &&

@@ -118,6 +118,46 @@ export function IconEdit(p: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconHome(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...svgProps(p)}>
+      <path d="M4 11.5 12 4l8 7.5" />
+      <path d="M6 10v9h12v-9" />
+      <path d="M10 19v-5h4v5" />
+    </svg>
+  );
+}
+
+export function IconSettings(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...svgProps(p)}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+    </svg>
+  );
+}
+
+export function IconUsers(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...svgProps(p)}>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+      <path d="M16 5.2a3.2 3.2 0 0 1 0 5.6" />
+      <path d="M17.5 14.3A5.5 5.5 0 0 1 20.5 19" />
+    </svg>
+  );
+}
+
+export function IconLogout(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...svgProps(p)}>
+      <path d="M14 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" />
+      <path d="M10 12H3" />
+      <path d="m6 8-4 4 4 4" />
+    </svg>
+  );
+}
+
 // Marca de la app (sparkle de 4 puntas, estilo "IA").
 export function IconLogo(p: SVGProps<SVGSVGElement>) {
   return (

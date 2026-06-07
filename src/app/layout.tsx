@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Merriweather } from "next/font/google";
 import "./globals.css";
-import TopNav from "@/components/TopNav";
-import HeaderBar from "@/components/HeaderBar";
+import AppShell from "@/components/AppShell";
 
 const merriweather = Merriweather({
   subsets: ["latin"],
@@ -36,11 +35,7 @@ export default function RootLayout({
             <div className="core-cloud" />
           </div>
         </div>
-        <TopNav />
-        <main className="shell">
-          <HeaderBar />
-          <div className="content">{children}</div>
-        </main>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

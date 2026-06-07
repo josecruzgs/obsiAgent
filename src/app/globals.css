@@ -17,25 +17,29 @@
   --radius: 16px;
   --hero-from: #7c5cff;
   --hero-to: #5b46e0;
+  --acrylic: none; /* en claro las superficies son sólidas (sin desenfoque) */
 }
 
 html[data-theme="dark"] {
-  --bg: #0d0e12;
-  --panel: #15171e;
-  --panel-2: #1b1e27;
-  --border: #262a36;
-  --text: #e7e9ef;
-  --muted: #969cab;
+  --bg: #08080e;
+  /* Superficies "acrílicas": semitranslúcidas para que se vea el fondo animado
+     detrás (efecto fluent). El blur lo aplican .card/.sidebar/etc. */
+  --panel: rgba(24, 25, 36, 0.62);
+  --panel-2: rgba(255, 255, 255, 0.045);
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #eceef6;
+  --muted: #9aa0b6;
   --accent: #8b7bff;
   --accent-2: #2dd4bf;
   --accent-soft: rgba(139, 123, 255, 0.16);
   --danger: #f87171;
   --up: #4ade80;
   --down: #f87171;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 16px 40px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 18px 50px rgba(0, 0, 0, 0.45);
   --hero-from: #7c5cff;
   --hero-to: #4f3fd0;
+  --acrylic: saturate(140%) blur(18px);
 }
 
 * {
@@ -213,113 +217,176 @@ html:not([data-theme="dark"]) .core-cloud {
   }
 }
 
-/* ─── Navbar superior con pills ──────────────────────────────────────── */
-.topnav {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 14px 28px;
-  /* background: var(--panel);
-  border-bottom: 1px solid var(--border); */
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 800;
-  font-size: 17px;
-  letter-spacing: -0.02em;
-}
-.brand .logo {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
+/* ─── Logo (marca) ───────────────────────────────────────────────────── */
+.logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, var(--accent), #9b8cff);
-  box-shadow: 0 6px 16px rgba(108, 92, 231, 0.35);
+  background: linear-gradient(135deg, var(--accent), #b9aaff);
+  box-shadow: 0 6px 18px rgba(108, 92, 231, 0.4);
   color: #fff;
+  flex-shrink: 0;
 }
-.nav-pills {
+
+/* ─── Cascarón: sidebar + main ───────────────────────────────────────── */
+.app {
+  display: grid;
+  grid-template-columns: 256px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
   display: flex;
-  gap: 6px;
-  margin: 0 auto;
-  background: var(--panel-2);
-  padding: 5px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 14px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  -webkit-backdrop-filter: var(--acrylic);
+  backdrop-filter: var(--acrylic);
+  z-index: 30;
 }
-.nav-pill {
-  padding: 8px 16px;
-  border-radius: 999px;
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 6px 8px 14px;
+}
+.sidebar-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;
+}
+.sidebar-brand-text strong {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.sidebar-brand-text span {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+.side-link {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 11px;
   color: var(--muted);
   font-size: 14px;
   font-weight: 500;
-  transition: background 0.16s ease, color 0.16s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
-.nav-pill:hover {
+.side-link:hover {
+  background: var(--panel-2);
   color: var(--text);
   text-decoration: none;
 }
-.nav-pill.active {
-  background: var(--accent);
+.side-link.active {
+  background: linear-gradient(135deg, var(--accent), #9b8cff);
   color: #fff;
-  box-shadow: 0 4px 12px rgba(108, 92, 231, 0.35);
+  box-shadow: 0 6px 16px rgba(108, 92, 231, 0.32);
 }
-.nav-actions {
+.side-link svg {
+  flex-shrink: 0;
+}
+.sidebar-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.sidebar-user {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 6px 8px;
 }
-.icon-btn {
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  color: var(--text);
-  width: 40px;
-  height: 40px;
-  border-radius: 11px;
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
   display: grid;
   place-items: center;
-  cursor: pointer;
-  font-size: 17px;
-  padding: 0;
-  box-shadow: none;
-  transition: background 0.15s ease, transform 0.12s ease;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
 }
-.icon-btn:hover {
-  background: var(--border);
-  transform: none;
-  box-shadow: none;
+.sidebar-user-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
+  flex: 1;
+}
+.sidebar-user-text strong {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar-user-text span {
+  font-size: 11.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.side-logout {
+  color: var(--muted);
 }
 
-/* ─── Shell + Hero (header morado con buscador) ──────────────────────── */
-.shell {
-  max-width: 1100px;
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.content {
+  width: 100%;
+  max-width: 1180px;
   margin: 0 auto;
-  padding: 24px 28px 56px;
+  padding: 24px 32px 56px;
 }
-.hero {
-  position: relative;
-  background: linear-gradient(120deg, var(--hero-from), var(--hero-to));
-  border-radius: 14px;
-  padding: 6px;
-  margin-bottom: 22px;
-  color: #fff;
-  box-shadow: none;
-  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.32s ease;
-  transform-origin: center;
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
 }
-/* Estado enfocado: TODO el hero (fondo morado + buscador) hace zoom y baja
-   20px, elevándose por encima de la capa de oscurecimiento. El overlay vive
-   en un portal a document.body, así que este `transform` no lo confina. */
-.hero.focused {
+
+/* ─── Barra superior (buscador) ──────────────────────────────────────── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  padding: 14px 32px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  -webkit-backdrop-filter: var(--acrylic);
+  backdrop-filter: var(--acrylic);
+}
+.topbar.focused {
   z-index: 60;
-  transform: translateY(20px) scale(1.06);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
 }
 
 /* Capa que opaca/desenfoca toda la página (montada en document.body). */
@@ -346,11 +413,12 @@ html:not([data-theme="dark"]) .core-cloud {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--panel-2);
   border: none;
-  border-radius: 14px;
-  padding: 8px 10px 8px 14px;
+  border-radius: 12px;
+  padding: 6px 8px 6px 14px;
   width: 100%;
+  max-width: 620px;
 }
 /* Borde con gradiente animado (conic-gradient girando + máscara tipo "ring") */
 @property --angle {
@@ -394,7 +462,7 @@ html:not([data-theme="dark"]) .core-cloud {
   background: transparent;
   border: none;
   outline: none;
-  color: #fff;
+  color: var(--text);
   font-size: 14.5px;
   padding: 6px 0;
 }
@@ -403,7 +471,7 @@ html:not([data-theme="dark"]) .core-cloud {
   box-shadow: none;
 }
 .hero-search input[type="text"]::placeholder {
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--muted);
 }
 /* Botón Buscar: icono + texto centrados; el icono hereda el color de acento */
 .hero-search button {
@@ -439,7 +507,7 @@ html:not([data-theme="dark"]) .core-cloud {
   animation: fade 0.15s ease;
 }
 .modal {
-  background: var(--panel);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 18px;
   width: 100%;
@@ -448,6 +516,8 @@ html:not([data-theme="dark"]) .core-cloud {
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow);
+  -webkit-backdrop-filter: saturate(140%) blur(28px);
+  backdrop-filter: saturate(140%) blur(28px);
   animation: pop 0.16s ease;
   overflow: hidden;
 }
@@ -527,6 +597,8 @@ h2 {
   padding: 22px;
   margin-bottom: 18px;
   box-shadow: var(--shadow-sm);
+  -webkit-backdrop-filter: var(--acrylic);
+  backdrop-filter: var(--acrylic);
 }
 
 /* ─── Formularios ────────────────────────────────────────────────────── */
@@ -713,6 +785,8 @@ code {
   border-radius: var(--radius);
   padding: 20px;
   box-shadow: var(--shadow-sm);
+  -webkit-backdrop-filter: var(--acrylic);
+  backdrop-filter: var(--acrylic);
 }
 .stat-head {
   display: flex;
@@ -756,7 +830,12 @@ code {
   padding: 20px;
   box-shadow: var(--shadow-sm);
   color: var(--text);
+  -webkit-backdrop-filter: var(--acrylic);
+  backdrop-filter: var(--acrylic);
   transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.action:hover {
+  border-color: rgba(139, 123, 255, 0.4);
 }
 .action:hover {
   text-decoration: none;
@@ -941,19 +1020,44 @@ code {
 
 /* ─── Responsive ─────────────────────────────────────────────────────── */
 @media (max-width: 820px) {
-  .topnav {
-    flex-wrap: wrap;
-    padding: 12px 16px;
+  .app {
+    grid-template-columns: 1fr;
+  }
+  /* El sidebar pasa a barra horizontal arriba; la navegación hace scroll-x. */
+  .sidebar {
+    position: sticky;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
     gap: 12px;
-  }
-  .nav-pills {
-    order: 3;
-    width: 100%;
-    margin: 0;
+    padding: 10px 14px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
     overflow-x: auto;
-    justify-content: flex-start;
   }
-  .shell {
+  .sidebar-brand {
+    padding: 0;
+  }
+  .sidebar-nav {
+    flex-direction: row;
+    gap: 4px;
+    flex: 1;
+  }
+  .side-link {
+    white-space: nowrap;
+  }
+  .sidebar-foot {
+    flex-direction: row;
+    border-top: none;
+    padding-top: 0;
+  }
+  .sidebar-user-text {
+    display: none;
+  }
+  .topbar {
+    padding: 12px 16px;
+  }
+  .content {
     padding: 18px 16px 48px;
   }
   .notas-layout {
