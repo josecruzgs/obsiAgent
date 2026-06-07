@@ -240,12 +240,20 @@ export async function getAppToken(tenantId: string): Promise<string> {
   return ((await res.json()) as { access_token: string }).access_token;
 }
 
-/** Lista todas las transcripciones de reuniones organizadas por `userId`. */
+/** Lista todas las transcripciones de reuniones organizadas por `userId`.
+ *  Se pasa una ventana de fechas explícita (por defecto, último año). */
 export async function getAllTranscripts(
   appToken: string,
-  userId: string
+  userId: string,
+  startDateTime?: string,
+  endDateTime?: string
 ): Promise<MeetingTranscript[]> {
-  let url = `${GRAPH}/users/${userId}/onlineMeetings/getAllTranscripts(meetingOrganizerUserId='${userId}')?$top=50`;
+  const start =
+    startDateTime ?? new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
+  const end = endDateTime ?? new Date().toISOString();
+  let url =
+    `${GRAPH}/users/${userId}/onlineMeetings/getAllTranscripts` +
+    `(meetingOrganizerUserId='${userId}',startDateTime=${start},endDateTime=${end})?$top=50`;
   const out: MeetingTranscript[] = [];
   while (url) {
     const res = await graph(appToken, url);
