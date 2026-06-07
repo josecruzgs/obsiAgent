@@ -1,8 +1,13 @@
 // Trae las transcripciones de reuniones de Teams (Microsoft Graph) usando el token
 // de la conexión EMPRESARIAL (cuenta M365) y las ingiere como notas empresariales.
 // Idempotente por external_id ("teams:<transcriptId>"): no reingiere lo ya hecho.
-import { getAccessToken } from "./connections";
-import { getAllTranscripts, getTranscriptContent } from "./onedrive";
+import { getConnection } from "./connections";
+import {
+  getAppToken,
+  resolveUserId,
+  getAllTranscripts,
+  getTranscriptContent,
+} from "./onedrive";
 import { parseVtt } from "./extract";
 import { query } from "./db";
 import { getBootstrapCompany } from "./tenancy";
@@ -25,9 +30,19 @@ const extId = (transcriptId: string) => `teams:${transcriptId}`;
 export async function runTeamsSync(): Promise<TeamsSyncResult> {
   const company = await getBootstrapCompany();
   const scope = companyScope(company.id);
-  const token = await getAccessToken(scope); // conexión empresarial (M365)
 
-  const transcripts = await getAllTranscripts(token);
+  // El organizador es la cuenta M365 con la que se conectó la base empresarial.
+  const conn = await getConnection(scope);
+  if (!conn?.account) {
+    throw new Error(
+      "Conecta la base empresarial con la cuenta M365 (de ahí sale el organizador)."
+    );
+  }
+
+  // App-only: token de aplicación + GUID del organizador.
+  const appToken = await getAppToken();
+  const userId = await resolveUserId(appToken, conn.account);
+  const transcripts = await getAllTranscripts(appToken, userId);
 
   // external_ids ya ingeridos -> para no duplicar.
   const seen = new Set(
@@ -55,7 +70,7 @@ export async function runTeamsSync(): Promise<TeamsSyncResult> {
 
   for (const t of nuevos) {
     try {
-      const vtt = await getTranscriptContent(token, t.meetingId, t.id);
+      const vtt = await getTranscriptContent(appToken, userId, t.meetingId, t.id);
       const text = parseVtt(vtt);
       if (!text) throw new Error("Transcripción vacía tras procesarla");
 

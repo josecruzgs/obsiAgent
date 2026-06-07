@@ -187,7 +187,10 @@ export async function ensureFolder(
   throw new Error(`Graph mkdir ${res.status}: ${await res.text()}`);
 }
 
-// ─── Transcripciones de reuniones de Teams (Graph) ─────────────────────────
+// ─── Transcripciones de reuniones de Teams (Graph, contexto APP-ONLY) ───────
+// getAllTranscripts NO se permite en contexto delegado (error 412), así que se
+// usa un token de aplicación (client_credentials) + una application access policy
+// que autoriza a la app a leer las reuniones del organizador.
 
 export interface MeetingTranscript {
   id: string;
@@ -196,21 +199,47 @@ export interface MeetingTranscript {
   organizer?: string;
 }
 
-/** Lista todas las transcripciones de reuniones del usuario conectado (M365). */
-export async function getAllTranscripts(
-  accessToken: string
-): Promise<MeetingTranscript[]> {
-  // La función getAllTranscripts exige el GUID del organizador; lo sacamos de /me.
-  const meRes = await graph(accessToken, "/me?$select=id");
-  if (!meRes.ok) {
-    throw new Error(`Graph /me ${meRes.status}: ${await meRes.text()}`);
-  }
-  const uid = ((await meRes.json()) as { id: string }).id;
+/** Token app-only (client_credentials) para Microsoft Graph. */
+export async function getAppToken(): Promise<string> {
+  const tenant = env.microsoft.tenantId;
+  if (!tenant) throw new Error("Falta MS_TENANT_ID en el .env (Directory ID).");
+  const body = new URLSearchParams({
+    client_id: env.microsoft.clientId,
+    client_secret: env.microsoft.clientSecret,
+    grant_type: "client_credentials",
+    scope: "https://graph.microsoft.com/.default",
+  });
+  const res = await fetch(
+    `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    }
+  );
+  if (!res.ok) throw new Error(`App token ${res.status}: ${await res.text()}`);
+  return ((await res.json()) as { access_token: string }).access_token;
+}
 
-  let url = `${GRAPH}/users/${uid}/onlineMeetings/getAllTranscripts(meetingOrganizerUserId='${uid}')?$top=50`;
+/** Resuelve el GUID de un usuario a partir de su UPN/email (token app-only). */
+export async function resolveUserId(
+  appToken: string,
+  upn: string
+): Promise<string> {
+  const res = await graph(appToken, `/users/${encodeURIComponent(upn)}?$select=id`);
+  if (!res.ok) throw new Error(`Graph /users/${upn} ${res.status}: ${await res.text()}`);
+  return ((await res.json()) as { id: string }).id;
+}
+
+/** Lista todas las transcripciones de reuniones organizadas por `userId`. */
+export async function getAllTranscripts(
+  appToken: string,
+  userId: string
+): Promise<MeetingTranscript[]> {
+  let url = `${GRAPH}/users/${userId}/onlineMeetings/getAllTranscripts(meetingOrganizerUserId='${userId}')?$top=50`;
   const out: MeetingTranscript[] = [];
   while (url) {
-    const res = await graph(accessToken, url);
+    const res = await graph(appToken, url);
     if (res.status === 404) return out;
     if (!res.ok) {
       throw new Error(`Graph getAllTranscripts ${res.status}: ${await res.text()}`);
@@ -241,15 +270,16 @@ export async function getAllTranscripts(
   return out;
 }
 
-/** Descarga el contenido (WebVTT) de una transcripción. */
+/** Descarga el contenido (WebVTT) de una transcripción (token app-only). */
 export async function getTranscriptContent(
-  accessToken: string,
+  appToken: string,
+  userId: string,
   meetingId: string,
   transcriptId: string
 ): Promise<string> {
   const res = await graph(
-    accessToken,
-    `/me/onlineMeetings/${meetingId}/transcripts/${transcriptId}/content?$format=text/vtt`
+    appToken,
+    `/users/${userId}/onlineMeetings/${meetingId}/transcripts/${transcriptId}/content?$format=text/vtt`
   );
   if (!res.ok) {
     throw new Error(`Graph transcript content ${res.status}: ${await res.text()}`);

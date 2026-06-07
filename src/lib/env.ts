@@ -61,6 +61,8 @@ export const env = {
     return {
       clientId: optional("MS_CLIENT_ID"),
       clientSecret: optional("MS_CLIENT_SECRET"),
+      // Tenant (Directory ID) para el token app-only de Teams (transcripciones).
+      tenantId: optional("MS_TENANT_ID"),
     };
   },
 
