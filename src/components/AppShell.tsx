@@ -3,9 +3,10 @@
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 import HeaderBar from "./HeaderBar";
+import RightRail from "./RightRail";
 
-/** Cascarón de la app: sidebar + barra superior + contenido. En /login muestra
- *  solo el contenido centrado (sin navegación). */
+/** Cascarón de la app: sidebar + barra superior + contenido + rail derecho.
+ *  En /login muestra solo el contenido centrado (sin navegación). */
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
@@ -13,13 +14,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return <div className="auth-shell">{children}</div>;
   }
 
+  // El grafo necesita todo el ancho: ahí no mostramos el rail derecho.
+  const showRail = !pathname.startsWith("/graph");
+
   return (
-    <div className="app">
+    <div className={`app${showRail ? "" : " no-rail"}`}>
       <Sidebar />
       <div className="main">
         <HeaderBar />
         <div className="content">{children}</div>
       </div>
+      {showRail && <RightRail />}
     </div>
   );
 }

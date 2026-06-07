@@ -18,6 +18,7 @@
   --hero-from: #7c5cff;
   --hero-to: #5b46e0;
   --acrylic: none; /* en claro las superficies son sólidas (sin desenfoque) */
+  color-scheme: light;
 }
 
 html[data-theme="dark"] {
@@ -40,6 +41,9 @@ html[data-theme="dark"] {
   --hero-from: #7c5cff;
   --hero-to: #4f3fd0;
   --acrylic: saturate(140%) blur(18px);
+  /* Hace que los controles nativos (desplegable del select, scrollbars) salgan
+     en oscuro: arregla el listado del <select> que se veía claro. */
+  color-scheme: dark;
 }
 
 * {
@@ -89,24 +93,6 @@ a:hover {
    rayos necesita un fondo oscuro para verse). En claro queda el --bg normal. */
 html[data-theme="dark"] .page-bg {
   background: radial-gradient(circle at 50% 45%, #2c2f3e, #0a0f1c);
-}
-/* Cuadrícula sutil (look tech/retro) siempre visible sobre el fondo animado.
-   Va en ::after con z-index mayor que los rayos (z-index 2) para quedar
-   por encima de ellos, pero toda la capa .page-bg sigue detrás del contenido. */
-html[data-theme="dark"] .page-bg::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-  background-image: linear-gradient(
-      to right,
-      rgba(180, 200, 255, 0.06) 1px,
-      transparent 1px
-    ),
-    linear-gradient(to bottom, rgba(180, 200, 255, 0.06) 1px, transparent 1px);
-  background-size: 38px 38px;
-  background-position: center center;
 }
 html:not([data-theme="dark"]) .glows,
 html:not([data-theme="dark"]) .core-cloud {
@@ -233,8 +219,12 @@ html:not([data-theme="dark"]) .core-cloud {
 /* ─── Cascarón: sidebar + main ───────────────────────────────────────── */
 .app {
   display: grid;
-  grid-template-columns: 256px minmax(0, 1fr);
+  grid-template-columns: 256px minmax(0, 1fr) 320px;
   min-height: 100vh;
+}
+/* Sin rail derecho (páginas que lo ocultan) */
+.app.no-rail {
+  grid-template-columns: 256px minmax(0, 1fr);
 }
 
 .sidebar {
@@ -363,9 +353,115 @@ html:not([data-theme="dark"]) .core-cloud {
 }
 .content {
   width: 100%;
-  max-width: 1180px;
-  margin: 0 auto;
   padding: 24px 32px 56px;
+}
+
+/* ─── Rail derecho (widgets del sistema) ─────────────────────────────── */
+.rail {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 16px;
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+  -webkit-backdrop-filter: var(--acrylic);
+  backdrop-filter: var(--acrylic);
+}
+.widget {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+.widget h3 {
+  margin: 0 0 12px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 700;
+}
+.widget-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13.5px;
+  padding: 4px 0;
+}
+.widget-row .k {
+  color: var(--muted);
+}
+.widget-row .v {
+  font-weight: 600;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.widget-num {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.badge.dim {
+  background: rgba(150, 156, 171, 0.16);
+  color: var(--muted);
+}
+.mini-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--accent), #8b7bff);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(108, 92, 231, 0.28);
+  transition: transform 0.12s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.mini-btn:hover {
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+.mini-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.dot.on {
+  background: var(--accent-2);
+}
+.dot.off {
+  background: var(--muted);
 }
 .auth-shell {
   min-height: 100vh;
@@ -675,14 +771,19 @@ button.secondary:hover:not(:disabled) {
 
 /* ─── Admin ──────────────────────────────────────────────────────────── */
 select {
-  background: var(--card, rgba(255, 255, 255, 0.04));
-  color: inherit;
+  background: var(--panel-2);
+  color: var(--text);
   border: 1px solid var(--border, rgba(128, 128, 128, 0.3));
   border-radius: 9px;
   padding: 9px 11px;
   font-size: 14px;
   font-family: inherit;
   cursor: pointer;
+}
+/* Refuerzo del listado desplegable (algunos navegadores ignoran color-scheme). */
+select option {
+  background: var(--bg);
+  color: var(--text);
 }
 .admin-table {
   width: 100%;
@@ -1019,8 +1120,19 @@ code {
 }
 
 /* ─── Responsive ─────────────────────────────────────────────────────── */
+/* Oculta el rail derecho en pantallas medianas. */
+@media (max-width: 1200px) {
+  .app,
+  .app.no-rail {
+    grid-template-columns: 256px minmax(0, 1fr);
+  }
+  .rail {
+    display: none;
+  }
+}
 @media (max-width: 820px) {
-  .app {
+  .app,
+  .app.no-rail {
     grid-template-columns: 1fr;
   }
   /* El sidebar pasa a barra horizontal arriba; la navegación hace scroll-x. */
