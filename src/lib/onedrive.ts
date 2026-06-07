@@ -200,7 +200,14 @@ export interface MeetingTranscript {
 export async function getAllTranscripts(
   accessToken: string
 ): Promise<MeetingTranscript[]> {
-  let url = `${GRAPH}/me/onlineMeetings/getAllTranscripts?$top=50`;
+  // La función getAllTranscripts exige el GUID del organizador; lo sacamos de /me.
+  const meRes = await graph(accessToken, "/me?$select=id");
+  if (!meRes.ok) {
+    throw new Error(`Graph /me ${meRes.status}: ${await meRes.text()}`);
+  }
+  const uid = ((await meRes.json()) as { id: string }).id;
+
+  let url = `${GRAPH}/users/${uid}/onlineMeetings/getAllTranscripts(meetingOrganizerUserId='${uid}')?$top=50`;
   const out: MeetingTranscript[] = [];
   while (url) {
     const res = await graph(accessToken, url);
