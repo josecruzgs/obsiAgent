@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { query } from "@/lib/db";
 import { IconBook, IconLink, IconUpload, IconNotes, IconGraph } from "@/components/icons";
+import AgentsBoard from "@/components/AgentsBoard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,6 +57,13 @@ export default async function Home() {
         Ingiere documentos, deja que la IA los conecte y consúltalos desde la web
         o por WhatsApp.
       </p>
+
+      {/* Agentes: el orquestador y sus agentes; se iluminan al trabajar. */}
+      <h2 style={{ margin: "6px 0 0" }}>Agentes</h2>
+      <p className="subtitle" style={{ marginTop: 2 }}>
+        El orquestador coordina a los agentes. Se iluminan cuando trabajan.
+      </p>
+      <AgentsBoard />
 
       {!stats.ok && (
         <div className="card">

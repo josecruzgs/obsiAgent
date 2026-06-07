@@ -15,7 +15,7 @@ interface Agent {
 
 type NodeState = "working" | "recent" | "idle" | "soon";
 
-export default function AgentesPage() {
+export default function AgentsBoard() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [now, setNow] = useState(0);
 
@@ -42,7 +42,7 @@ export default function AgentesPage() {
   }, []);
 
   const N = Math.max(agents.length, 1);
-  const R = 38; // radio en % desde el centro
+  const R = 38;
   const pos = (i: number) => {
     const a = ((-90 + (i * 360) / N) * Math.PI) / 180;
     return { x: 50 + R * Math.cos(a), y: 50 + R * Math.sin(a) };
@@ -57,11 +57,6 @@ export default function AgentesPage() {
 
   return (
     <>
-      <h1>Agentes</h1>
-      <p className="subtitle">
-        El orquestador (centro) coordina a los agentes. Se iluminan cuando trabajan.
-      </p>
-
       <div className="agents-stage">
         <svg className="agents-lines" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
           {agents.map((ag, i) => {
