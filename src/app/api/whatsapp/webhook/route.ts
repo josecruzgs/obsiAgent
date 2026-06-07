@@ -70,14 +70,14 @@ export async function POST(req: NextRequest) {
 
     if (!isAllowed(number)) {
       void sendText(
-        number,
+        jid,
         "Lo siento, este número no está autorizado para consultar el vault."
       ).catch((e) => console.error("[whatsapp] send error:", e));
       continue;
     }
 
-    // Procesa RAG y responde (no bloqueamos la respuesta del webhook).
-    void handleQuery(number, text).catch((e) =>
+    // Procesa RAG y responde al jid completo (maneja @lid y @s.whatsapp.net).
+    void handleQuery(jid, text).catch((e) =>
       console.error("[whatsapp] handleQuery error:", e)
     );
   }
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-async function handleQuery(number: string, text: string): Promise<void> {
+async function handleQuery(to: string, text: string): Promise<void> {
   // WhatsApp consulta la base EMPRESARIAL de la empresa por defecto.
   const company = await getBootstrapCompany();
   const companyUser: User = {
@@ -104,5 +104,5 @@ async function handleQuery(number: string, text: string): Promise<void> {
         result.sources.map((s) => s.title ?? s.id).join(", ") +
         "_"
       : "";
-  await sendText(number, result.answer + sources);
+  await sendText(to, result.answer + sources);
 }
