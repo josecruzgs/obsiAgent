@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { authorizeUrl } from "@/lib/onedrive";
 import { getCurrentUser } from "@/lib/currentUser";
+import { cookieSecure } from "@/lib/session";
 
 export const runtime = "nodejs";
 
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
   const res = NextResponse.redirect(authorizeUrl(state));
   const opts = {
     httpOnly: true,
-    secure: true,
+    secure: cookieSecure(),
     sameSite: "lax" as const,
     maxAge: 600,
     path: "/",

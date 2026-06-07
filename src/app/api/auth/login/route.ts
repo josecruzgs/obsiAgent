@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { authorizeUrl } from "@/lib/auth";
+import { cookieSecure } from "@/lib/session";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,7 @@ export async function GET() {
   const res = NextResponse.redirect(authorizeUrl(state));
   res.cookies.set("auth_state", state, {
     httpOnly: true,
-    secure: true,
+    secure: cookieSecure(),
     sameSite: "lax",
     maxAge: 600,
     path: "/",

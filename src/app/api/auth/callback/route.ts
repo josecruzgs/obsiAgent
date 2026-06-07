@@ -53,7 +53,9 @@ export async function GET(req: NextRequest) {
     res.cookies.delete("auth_state");
     return res;
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return back(`error=${encodeURIComponent(msg)}`);
+    console.error("[auth] callback error:", err);
+    const msg =
+      err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    return back(`error=${encodeURIComponent(msg || "error_desconocido")}`);
   }
 }

@@ -87,11 +87,17 @@ export async function verifySession(
   }
 }
 
-/** Opciones de la cookie de sesión (httpOnly, segura). */
+/** `Secure` solo cuando la app corre en https (en http://localhost debe ir
+ *  sin Secure, o el navegador descarta la cookie y el login falla). */
+export function cookieSecure(): boolean {
+  return env.publicBaseUrl.startsWith("https");
+}
+
+/** Opciones de la cookie de sesión (httpOnly, segura en https). */
 export function sessionCookieOptions() {
   return {
     httpOnly: true,
-    secure: true,
+    secure: cookieSecure(),
     sameSite: "lax" as const,
     maxAge: MAX_AGE_SECONDS,
     path: "/",
