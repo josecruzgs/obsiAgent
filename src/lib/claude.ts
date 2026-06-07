@@ -104,6 +104,53 @@ Reglas:
   return parsed;
 }
 
+const classifySchema = z.object({
+  cliente: z.string().nullable().default(null),
+  tags: z.array(z.string()).default([]),
+});
+
+/** Clasifica una nota: a qué cliente/proyecto pertenece (de una lista conocida)
+ *  y tags sugeridos. Una sola llamada (modelo rápido). cliente = null si ninguno. */
+export async function classifyNote(
+  text: string,
+  clients: string[]
+): Promise<{ cliente: string | null; tags: string[] }> {
+  const lista = clients.length
+    ? clients.map((c) => `- ${c}`).join("\n")
+    : "(no hay clientes/proyectos conocidos)";
+
+  const msg = await client().messages.create({
+    model: env.anthropicAnswerModel,
+    max_tokens: 300,
+    system:
+      "Clasificas notas de una consultoría de software. Respondes SIEMPRE con un " +
+      "único objeto JSON válido, sin texto adicional.",
+    messages: [
+      {
+        role: "user",
+        content: `Clientes/proyectos conocidos:\n${lista}\n\nNota a clasificar:\n<nota>\n${text.slice(
+          0,
+          6000
+        )}\n</nota>\n\nDevuelve JSON con esta forma:\n{ "cliente": "<EXACTAMENTE uno de la lista, o null si ninguno aplica>", "tags": ["3-5 tags en minúsculas, sin #"] }`,
+      },
+    ],
+  });
+
+  const out = msg.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("");
+  try {
+    const parsed = classifySchema.parse(JSON.parse(extractJson(out)));
+    // Solo acepta un cliente que esté en la lista (evita inventos).
+    const cliente =
+      parsed.cliente && clients.includes(parsed.cliente) ? parsed.cliente : null;
+    return { cliente, tags: parsed.tags.slice(0, 5) };
+  } catch {
+    return { cliente: null, tags: [] };
+  }
+}
+
 /**
  * Resume una transcripción de reunión en Markdown estructurado (resumen, puntos
  * clave, acuerdos/tareas, participantes). Lo que se ingiere al vault es ESTE

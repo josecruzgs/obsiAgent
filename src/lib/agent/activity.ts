@@ -16,8 +16,8 @@ export const AGENTS: AgentInfo[] = [
   { key: "search", label: "Buscador", description: "Responde preguntas sobre el vault (RAG agéntico)", status: "active" },
   { key: "whatsapp", label: "WhatsApp", description: "Responde y crea notas por WhatsApp", status: "active" },
   { key: "status", label: "Status", description: "Mantiene la nota de estado por cliente", status: "active" },
-  { key: "curador", label: "Curador", description: "Enlaza y deduplica el grafo (próximamente)", status: "soon" },
-  { key: "enrutador", label: "Enrutador", description: "Clasifica ámbito/cliente/tags (próximamente)", status: "soon" },
+  { key: "curador", label: "Curador", description: "Detecta near-duplicados y enriquece enlaces del grafo", status: "active" },
+  { key: "enrutador", label: "Enrutador", description: "Clasifica notas por cliente/proyecto (tags)", status: "active" },
 ];
 
 interface Live {
