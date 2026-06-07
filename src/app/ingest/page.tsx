@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { IconUpload, IconEdit, IconCloudUpload, IconClose } from "@/components/icons";
 
 interface IngestResult {
@@ -30,6 +30,19 @@ interface UploadResponse {
 }
 
 export default function IngestPage() {
+  // ── Ámbito de destino (empresarial / personal) ───────────────────────
+  const [scope, setScope] = useState<"personal" | "company">("personal");
+  const [isSuperadmin, setIsSuperadmin] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.user?.role === "superadmin") setIsSuperadmin(true);
+      })
+      .catch(() => {});
+  }, []);
+
   // ── Flujo 1: subir archivos ──────────────────────────────────────────
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -52,6 +65,7 @@ export default function IngestPage() {
     try {
       const fd = new FormData();
       files.forEach((f) => fd.append("files", f));
+      fd.append("scope", scope);
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       setUpload((await res.json()) as UploadResponse);
       if (res.ok) setFiles([]);
@@ -76,7 +90,7 @@ export default function IngestPage() {
       const res = await fetch("/api/ingest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ raw, title: title || undefined }),
+        body: JSON.stringify({ raw, title: title || undefined, scope }),
       });
       const data: IngestResult = await res.json();
       setResult(data);
@@ -99,6 +113,24 @@ export default function IngestPage() {
         título, resumen, tags y enlaces a notas existentes; luego se indexa para
         búsqueda.
       </p>
+
+      <div className="card">
+        <label htmlFor="scope">¿A qué base se añadirá?</label>
+        <select
+          id="scope"
+          value={scope}
+          onChange={(e) => setScope(e.target.value as "personal" | "company")}
+        >
+          <option value="personal">Mi base personal (privada)</option>
+          {isSuperadmin && <option value="company">Base empresarial (compartida)</option>}
+        </select>
+        <p className="muted" style={{ marginTop: 8 }}>
+          {scope === "company"
+            ? "Estas notas las verá toda la empresa."
+            : "Estas notas solo las verás tú."}
+          {!isSuperadmin && " Solo el superadmin puede añadir a la base empresarial."}
+        </p>
+      </div>
 
       {/* ── Subir archivos ── */}
       <form onSubmit={handleUpload} className="card">

@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { extractTextFromBuffer, isSupported } from "@/lib/extract";
 import { requireUser } from "@/lib/currentUser";
 import { authErrorResponse } from "@/lib/adminAuth";
-import { companyScope } from "@/lib/scope";
+import { companyScope, personalScope } from "@/lib/scope";
 import { loadIngestContext, ingestText } from "@/lib/ingest";
 import { rebuildMoc } from "@/lib/moc";
 
@@ -36,7 +36,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const scope = companyScope(user.company_id);
+  const kind = form.get("scope") === "company" ? "company" : "personal";
+  if (kind === "company" && user.role !== "superadmin") {
+    return NextResponse.json(
+      { ok: false, error: "Solo el superadmin puede subir a la base empresarial." },
+      { status: 403 }
+    );
+  }
+  const scope =
+    kind === "company"
+      ? companyScope(user.company_id)
+      : personalScope(user.company_id, user.id);
   const ctx = await loadIngestContext(scope);
 
   const resultados: {
