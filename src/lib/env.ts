@@ -77,6 +77,12 @@ export const env = {
   get anthropicAnswerModel() {
     return optional("ANTHROPIC_ANSWER_MODEL", "claude-haiku-4-5-20251001");
   },
+  // Modelo para los AGENTES (loop con herramientas). Por defecto hereda
+  // ANTHROPIC_MODEL; ponlo en un modelo más capaz (p. ej. claude-opus-4-8) si
+  // quieres mayor calidad en el razonamiento multi-paso.
+  get anthropicAgentModel() {
+    return optional("ANTHROPIC_AGENT_MODEL", this.anthropicModel);
+  },
 
   get voyageApiKey() {
     return required("VOYAGE_API_KEY");

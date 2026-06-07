@@ -21,7 +21,7 @@ import {
   type RecordingItem,
 } from "./onedrive";
 import { parseStreamTranscript } from "./extract";
-import { summarizeMeeting } from "./claude";
+import { runMeetingAgent } from "./agents/meetingAgent";
 import { query } from "./db";
 import { type Scope } from "./scope";
 import { loadIngestContext, ingestText } from "./ingest";
@@ -168,8 +168,9 @@ export async function runTeamsSyncForConnection(
       const fecha = rec.createdDateTime ? rec.createdDateTime.slice(0, 10) : "";
       const titulo = tituloDeGrabacion(rec.name);
 
-      // Lo que se ingiere es un RESUMEN generado por IA, no la transcripción cruda.
-      const resumen = await summarizeMeeting(text, fecha, titulo);
+      // Lo que se ingiere es un RESUMEN generado por un AGENTE (busca el
+      // cliente/proyecto y enlaza), no la transcripción cruda.
+      const resumen = await runMeetingAgent(text, fecha, titulo, scope);
       const encabezado = [
         fecha ? `**Fecha:** ${fecha}` : "",
         `**Origen:** Reunión de Teams — ${rec.name}`,
