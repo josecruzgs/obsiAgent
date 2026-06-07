@@ -42,7 +42,11 @@ fi
 mkdir -p "$INBOX"
 
 # ─── 1) OneDrive root -> inbox (move = baja y borra del root) ────────────────
+# --max-depth 1: SOLO archivos del root, nunca las subcarpetas procesados/
+# fallidos (el --exclude por sí solo no bastaba y se re-bajaba el respaldo,
+# causando re-ingesta infinita).
 rclone move "$REMOTE" "$INBOX" \
+  --max-depth 1 \
   --exclude "$EXCLUDE_PROC" --exclude "$EXCLUDE_FAIL" --include "$INCLUDE" \
   --transfers 4 \
   --log-file "$LOG" --log-level INFO

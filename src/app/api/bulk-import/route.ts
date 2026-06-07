@@ -15,6 +15,11 @@ import { getBootstrapCompany } from "@/lib/tenancy";
 import { companyScope } from "@/lib/scope";
 import { loadIngestContext, ingestText } from "@/lib/ingest";
 import { rebuildMoc } from "@/lib/moc";
+import { query } from "@/lib/db";
+
+// Clave de idempotencia por nombre de archivo (evita re-ingerir el mismo
+// documento si reaparece en el inbox; antes esto generaba cientos de duplicados).
+const fileExtId = (name: string) => `file:${name}`;
 
 export const runtime = "nodejs";
 
@@ -28,7 +33,15 @@ async function listInboxFiles(dir: string): Promise<string[]> {
       return; // la carpeta puede no existir aún
     }
     for (const e of entries) {
-      if (e.name.startsWith("_") || e.name.startsWith(".")) continue; // _procesados, etc.
+      // Saltar carpetas de respaldo (locales _procesados/_fallidos y las que el
+      // pipeline rclone re-baja sin guion bajo) y ocultas.
+      if (
+        e.name.startsWith("_") ||
+        e.name.startsWith(".") ||
+        e.name === "procesados" ||
+        e.name === "fallidos"
+      )
+        continue;
       const full = path.join(d, e.name);
       if (e.isDirectory()) await walk(full);
       else if (e.isFile() && isSupported(e.name)) out.push(full);
@@ -57,16 +70,42 @@ export async function POST(req: NextRequest) {
   const scope = companyScope(company.id);
   const ctx = await loadIngestContext(scope);
 
+  // Idempotencia: nombres de archivo ya ingeridos (external_id "file:<name>").
+  const seen = new Set(
+    (
+      await query<{ external_id: string }>(
+        `select external_id from notes where external_id is not null`
+      )
+    ).map((r) => r.external_id)
+  );
+
   const processedDir = path.join(inbox, "_procesados");
   const failedDir = path.join(inbox, "_fallidos");
   await fs.mkdir(processedDir, { recursive: true });
   await fs.mkdir(failedDir, { recursive: true });
 
+  const moveTo = async (file: string, dir: string): Promise<void> => {
+    await fs
+      .rename(file, path.join(dir, path.basename(file)))
+      .catch((e) => console.error(`[bulk-import] no se pudo mover ${file}:`, e));
+  };
+
   const procesados: { archivo: string; id: string; titulo: string }[] = [];
   const errores: { archivo: string; error: string }[] = [];
+  let omitidos = 0;
 
   for (const file of toProcess) {
     const rel = path.relative(inbox, file);
+    const base = path.basename(file);
+    const extId = fileExtId(base);
+
+    // Ya ingerido antes: no re-procesar; solo apartar el original.
+    if (seen.has(extId)) {
+      omitidos++;
+      await moveTo(file, processedDir);
+      continue;
+    }
+
     try {
       const text = await extractText(file);
       if (!text) throw new Error("Texto vacío tras la extracción");
@@ -74,19 +113,19 @@ export async function POST(req: NextRequest) {
       const hint = path.basename(file, path.extname(file));
       const r = await ingestText(text, hint, ctx, { source: rel });
 
+      await query(`update notes set external_id = $1 where id = $2`, [extId, r.id]).catch(
+        (e) => console.error("[bulk-import] external_id:", e)
+      );
+      seen.add(extId);
+
       procesados.push({ archivo: rel, id: r.id, titulo: r.title });
       console.log(`[bulk-import] OK ${rel} -> ${r.id}`);
-
-      await fs
-        .rename(file, path.join(processedDir, path.basename(file)))
-        .catch(() => {});
+      await moveTo(file, processedDir);
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
       errores.push({ archivo: rel, error });
       console.error(`[bulk-import] ERROR ${rel}: ${error}`);
-      await fs
-        .rename(file, path.join(failedDir, path.basename(file)))
-        .catch(() => {});
+      await moveTo(file, failedDir);
     }
   }
 
@@ -97,6 +136,7 @@ export async function POST(req: NextRequest) {
     inbox,
     encontrados: files.length,
     procesados: procesados.length,
+    omitidos,
     fallidos: errores.length,
     restantes: files.length - toProcess.length,
     detalle: { procesados, errores },
