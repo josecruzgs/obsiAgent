@@ -113,12 +113,8 @@ async function handleQuery(to: string, text: string): Promise<void> {
     ms_oid: null,
   };
   // Agente: responde con RAG agéntico y puede crear notas si se le pide.
+  // Respuesta natural por chat: sin pie de "Fuentes" (el agente menciona el
+  // origen en prosa si aporta).
   const result = await runAssistant(text, companyUser, { allowWrite: true });
-  const sources =
-    result.sources.length > 0
-      ? "\n\n_Fuentes: " +
-        result.sources.map((s) => s.title ?? s.id).join(", ") +
-        "_"
-      : "";
-  await sendText(to, result.answer + sources);
+  await sendText(to, result.answer);
 }

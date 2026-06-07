@@ -150,7 +150,8 @@ export function buildUserReadTools(user: User, sources?: Set<string>): AgentTool
         [toVectorLiteral(vec), ...f.params, k]
       );
       if (rows.length === 0) return "Sin resultados.";
-      for (const r of rows) sources?.add(r.id);
+      // No marcamos fuentes aquí: search solo surfacea candidatos. Las fuentes
+      // reales son las notas que el agente decide LEER (get_note).
       return rows
         .map(
           (r) =>
