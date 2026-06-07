@@ -142,7 +142,7 @@ export default function IngestPage() {
           ref={fileInputRef}
           type="file"
           multiple
-          accept=".pdf,.docx,.txt,.md,.markdown"
+          accept=".pdf,.docx,.txt,.md,.markdown,.vtt"
           style={{ display: "none" }}
           onChange={(e) => {
             addFiles(e.target.files);

@@ -9,7 +9,7 @@ const GRAPH = "https://graph.microsoft.com/v1.0";
 // offline_access -> refresh_token; Files.ReadWrite -> leer y mover archivos.
 export const SCOPES = "offline_access User.Read Files.ReadWrite";
 
-const SUPPORTED = [".md", ".markdown", ".txt", ".docx", ".pdf"];
+const SUPPORTED = [".md", ".markdown", ".txt", ".docx", ".pdf", ".vtt"];
 
 /** Codifica cada segmento de una ruta conservando las barras `/`. */
 function encPath(p: string): string {

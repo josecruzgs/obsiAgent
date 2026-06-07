@@ -27,7 +27,7 @@ LOG="${LOG_FILE:-/var/log/obsiagent-sync.log}"
 
 # Solo tomamos formatos que el extractor sabe leer (.md/.txt/.docx/.pdf).
 # Lo demás (xlsx, imágenes, etc.) se queda en OneDrive sin tocar.
-INCLUDE='{*.md,*.markdown,*.txt,*.docx,*.pdf}'
+INCLUDE='{*.md,*.markdown,*.txt,*.docx,*.pdf,*.vtt}'
 # Nunca re-bajar las subcarpetas de respaldo (evita reprocesar lo ya guardado).
 EXCLUDE_PROC='/procesados/**'
 EXCLUDE_FAIL='/fallidos/**'
