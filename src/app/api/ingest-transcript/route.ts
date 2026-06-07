@@ -46,7 +46,35 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { transcript, title, meeting } = bodySchema.parse(await req.json());
+    // Acepta dos formatos:
+    //  - application/json: { transcript, title?, meeting? }  (curl/pruebas)
+    //  - cualquier otro:   el cuerpo crudo ES la transcripción; el título va en
+    //    el header "x-title" o ?title=  (más fácil para Power Automate: sin JSON).
+    const ct = req.headers.get("content-type") || "";
+    let transcript: string;
+    let title: string | undefined;
+    let meeting: z.infer<typeof bodySchema>["meeting"];
+
+    if (ct.includes("application/json")) {
+      ({ transcript, title, meeting } = bodySchema.parse(await req.json()));
+    } else {
+      transcript = await req.text();
+      const url = new URL(req.url);
+      title =
+        req.headers.get("x-title") ||
+        url.searchParams.get("title") ||
+        undefined;
+      const subject = req.headers.get("x-subject") || undefined;
+      const start = req.headers.get("x-start") || undefined;
+      const organizer = req.headers.get("x-organizer") || undefined;
+      meeting = subject || start || organizer ? { subject, start, organizer } : undefined;
+      if (!transcript?.trim()) {
+        return NextResponse.json(
+          { ok: false, error: "Cuerpo vacío (se esperaba la transcripción)." },
+          { status: 400 }
+        );
+      }
+    }
 
     // Si viene en formato WebVTT, lo limpiamos a "Hablante: frase".
     const looksVtt = /-->/.test(transcript);
