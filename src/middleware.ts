@@ -11,6 +11,7 @@ const PUBLIC_PREFIXES = [
   "/api/whatsapp", // webhook externo (Evolution API)
   "/api/bulk-import", // cron, protegido por token
   "/api/reindex", // protegido por token
+  "/api/ingest-transcript", // Power Automate (Teams), protegido por token
   "/api/onedrive/sync", // cron (token) o UI (sesión); el route valida ambos
 ];
 
