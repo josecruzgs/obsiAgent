@@ -3,7 +3,7 @@
 //
 // Configura en Evolution el webhook hacia esta URL con el evento MESSAGES_UPSERT.
 import { NextRequest, NextResponse } from "next/server";
-import { answer } from "@/lib/rag";
+import { runAssistant } from "@/lib/agents/assistant";
 import { getBootstrapCompany, type User } from "@/lib/tenancy";
 import { sendText, isAllowed } from "@/lib/evolution";
 
@@ -94,7 +94,8 @@ async function handleQuery(number: string, text: string): Promise<void> {
     role: "member",
     ms_oid: null,
   };
-  const result = await answer(text, companyUser);
+  // Agente: responde con RAG agéntico y puede crear notas si se le pide.
+  const result = await runAssistant(text, companyUser, { allowWrite: true });
   const sources =
     result.sources.length > 0
       ? "\n\n_Fuentes: " +

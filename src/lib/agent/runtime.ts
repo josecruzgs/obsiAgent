@@ -26,6 +26,7 @@ export interface RunAgentOptions {
   maxSteps?: number; // tope de iticiones del loop (default 8)
   model?: string; // override del modelo (default env.anthropicAgentModel)
   maxTokens?: number; // default 4096
+  label?: string; // etiqueta para el log (p. ej. "meeting", "search")
 }
 
 export interface RunAgentResult {
@@ -55,6 +56,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<RunAgentResult> {
     { role: "user", content: opts.prompt },
   ];
   const toolCalls: { name: string; input: unknown }[] = [];
+  const tag = opts.label ? `agent:${opts.label}` : "agent";
 
   let steps = 0;
   let lastText = "";
@@ -72,6 +74,11 @@ export async function runAgent(opts: RunAgentOptions): Promise<RunAgentResult> {
     lastText = textOf(resp.content) || lastText;
 
     if (resp.stop_reason !== "tool_use") {
+      console.log(
+        `[${tag}] pasos=${steps} tools=${
+          toolCalls.map((c) => c.name).join(",") || "(ninguna)"
+        }`
+      );
       return { text: textOf(resp.content), steps, toolCalls };
     }
 
@@ -99,6 +106,11 @@ export async function runAgent(opts: RunAgentOptions): Promise<RunAgentResult> {
   }
 
   // Se agotó maxSteps: una última llamada SIN herramientas para forzar respuesta.
+  console.log(
+    `[${tag}] límite de pasos (${maxSteps}) tools=${toolCalls
+      .map((c) => c.name)
+      .join(",")}`
+  );
   try {
     const final = await client().messages.create({
       model,

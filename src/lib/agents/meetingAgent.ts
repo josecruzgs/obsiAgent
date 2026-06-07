@@ -58,6 +58,7 @@ ${transcript.slice(0, 60000)}
     prompt,
     maxSteps: 8,
     maxTokens: 2000,
+    label: "meeting",
   });
   return r.text.trim();
 }

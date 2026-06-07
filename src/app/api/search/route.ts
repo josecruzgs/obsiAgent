@@ -1,7 +1,7 @@
 // POST /api/search — pregunta en lenguaje natural -> respuesta RAG con fuentes.
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { answer } from "@/lib/rag";
+import { runAssistant } from "@/lib/agents/assistant";
 import { requireUser } from "@/lib/currentUser";
 import { authErrorResponse } from "@/lib/adminAuth";
 
@@ -9,14 +9,14 @@ export const runtime = "nodejs";
 
 const bodySchema = z.object({
   q: z.string().min(1, "La consulta no puede estar vacía"),
-  k: z.number().int().min(1).max(20).optional(),
+  k: z.number().int().min(1).max(20).optional(), // aceptado por compatibilidad; el agente decide
 });
 
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
-    const { q, k } = bodySchema.parse(await req.json());
-    const result = await answer(q, user, k ?? 5);
+    const { q } = bodySchema.parse(await req.json());
+    const result = await runAssistant(q, user);
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     const a = authErrorResponse(err);
