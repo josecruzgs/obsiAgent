@@ -119,6 +119,8 @@ function ScopeCard({
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [sync, setSync] = useState<SyncResult | null>(null);
+  const [teams, setTeams] = useState<string | null>(null);
+  const [syncingTeams, setSyncingTeams] = useState(false);
 
   useEffect(() => setFolder(data.folder), [data.folder]);
 
@@ -159,6 +161,24 @@ function ScopeCard({
     });
     setSync(null);
     onChanged();
+  }
+
+  async function syncTeams() {
+    setSyncingTeams(true);
+    setTeams(null);
+    try {
+      const res = await fetch("/api/teams/sync", { method: "POST" });
+      const d = await res.json();
+      setTeams(
+        d.ok
+          ? `✓ Teams: ${d.procesados}/${d.encontrados} transcripción(es) nueva(s), ${d.fallidos} fallida(s)`
+          : `✗ ${d.error}`
+      );
+    } catch (err) {
+      setTeams(`✗ ${String(err)}`);
+    } finally {
+      setSyncingTeams(false);
+    }
   }
 
   return (
@@ -203,6 +223,28 @@ function ScopeCard({
               Desconectar
             </button>
           </div>
+
+          {kind === "company" && (
+            <div style={{ marginTop: 12 }}>
+              <button
+                type="button"
+                className="secondary"
+                onClick={syncTeams}
+                disabled={syncingTeams}
+              >
+                {syncingTeams ? "Trayendo transcripciones…" : "Sincronizar Teams (transcripciones)"}
+              </button>
+              {teams && (
+                <p
+                  className={teams.startsWith("✓") ? "success" : "error"}
+                  style={{ marginTop: 8, fontSize: 13 }}
+                >
+                  {teams}
+                </p>
+              )}
+            </div>
+          )}
+
           {data.lastSync && (
             <p className="muted" style={{ marginTop: 12 }}>
               Último sync: {new Date(data.lastSync.at).toLocaleString("es-MX")} ·{" "}

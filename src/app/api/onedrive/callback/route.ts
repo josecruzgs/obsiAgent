@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const tok = await exchangeCode(code);
+    const tok = await exchangeCode(code, scopeKind === "company");
     if (!tok.refresh_token) {
       throw new Error("Microsoft no devolvió refresh_token (revisa offline_access).");
     }

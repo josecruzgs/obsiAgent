@@ -89,11 +89,13 @@ export async function listConnectedConnections(): Promise<OneDriveConnection[]> 
   );
 }
 
-/** Access token válido para un scope, rotando y persistiendo el refresh token. */
+/** Access token válido para un scope, rotando y persistiendo el refresh token.
+ *  La conexión EMPRESARIAL (userId null) usa scopes "full" (incluye Teams). */
 export async function getAccessToken(scope: Scope): Promise<string> {
   const conn = await getConnection(scope);
   if (!conn?.refresh_token) throw new Error("OneDrive no está conectado.");
-  const tok = await refreshAccessToken(conn.refresh_token);
+  const full = scope.userId === null;
+  const tok = await refreshAccessToken(conn.refresh_token, full);
   if (tok.refresh_token && tok.refresh_token !== conn.refresh_token) {
     await upsertConnection(scope, { refresh_token: tok.refresh_token });
   }

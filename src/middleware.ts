@@ -13,6 +13,7 @@ const PUBLIC_PREFIXES = [
   "/api/reindex", // protegido por token
   "/api/ingest-transcript", // Power Automate (Teams), protegido por token
   "/api/onedrive/sync", // cron (token) o UI (sesión); el route valida ambos
+  "/api/teams/sync", // cron (token) o UI (sesión); el route valida ambos
 ];
 
 function isPublic(pathname: string): boolean {

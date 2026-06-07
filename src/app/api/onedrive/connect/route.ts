@@ -32,7 +32,8 @@ export async function GET(req: NextRequest) {
   }
 
   const state = crypto.randomUUID();
-  const res = NextResponse.redirect(authorizeUrl(state));
+  // Empresarial pide scopes "full" (incluye lectura de transcripciones de Teams).
+  const res = NextResponse.redirect(authorizeUrl(state, scope === "company"));
   const opts = {
     httpOnly: true,
     secure: cookieSecure(),

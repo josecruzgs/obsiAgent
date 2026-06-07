@@ -7,7 +7,15 @@ const AUTHORITY = "https://login.microsoftonline.com/common/oauth2/v2.0";
 const GRAPH = "https://graph.microsoft.com/v1.0";
 
 // offline_access -> refresh_token; Files.ReadWrite -> leer y mover archivos.
-export const SCOPES = "offline_access User.Read Files.ReadWrite";
+const SCOPES_BASIC = "offline_access User.Read Files.ReadWrite";
+// Solo la conexión EMPRESARIAL (M365) pide además leer transcripciones de Teams.
+// (Las cuentas personales outlook.com no soportan estos permisos.)
+const SCOPES_FULL =
+  SCOPES_BASIC + " OnlineMeetings.Read OnlineMeetingTranscript.Read.All";
+
+function scopesFor(full: boolean): string {
+  return full ? SCOPES_FULL : SCOPES_BASIC;
+}
 
 const SUPPORTED = [".md", ".markdown", ".txt", ".docx", ".pdf", ".vtt"];
 
@@ -20,13 +28,13 @@ export function redirectUri(): string {
   return `${env.publicBaseUrl}/api/onedrive/callback`;
 }
 
-export function authorizeUrl(state: string): string {
+export function authorizeUrl(state: string, full = false): string {
   const params = new URLSearchParams({
     client_id: env.microsoft.clientId,
     response_type: "code",
     redirect_uri: redirectUri(),
     response_mode: "query",
-    scope: SCOPES,
+    scope: scopesFor(full),
     state,
   });
   return `${AUTHORITY}/authorize?${params.toString()}`;
@@ -59,16 +67,23 @@ async function tokenRequest(
 }
 
 /** Intercambia el `code` del callback por tokens (incluye refresh_token). */
-export function exchangeCode(code: string): Promise<TokenResponse> {
-  return tokenRequest({ grant_type: "authorization_code", code, scope: SCOPES });
+export function exchangeCode(code: string, full = false): Promise<TokenResponse> {
+  return tokenRequest({
+    grant_type: "authorization_code",
+    code,
+    scope: scopesFor(full),
+  });
 }
 
 /** Refresca el access token a partir de un refresh token (sin persistir). */
-export function refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
+export function refreshAccessToken(
+  refreshToken: string,
+  full = false
+): Promise<TokenResponse> {
   return tokenRequest({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
-    scope: SCOPES,
+    scope: scopesFor(full),
   });
 }
 
@@ -170,6 +185,69 @@ export async function ensureFolder(
     return ((await g2.json()) as { id: string }).id;
   }
   throw new Error(`Graph mkdir ${res.status}: ${await res.text()}`);
+}
+
+// ─── Transcripciones de reuniones de Teams (Graph) ─────────────────────────
+
+export interface MeetingTranscript {
+  id: string;
+  meetingId: string;
+  createdDateTime?: string;
+  organizer?: string;
+}
+
+/** Lista todas las transcripciones de reuniones del usuario conectado (M365). */
+export async function getAllTranscripts(
+  accessToken: string
+): Promise<MeetingTranscript[]> {
+  let url = `${GRAPH}/me/onlineMeetings/getAllTranscripts?$top=50`;
+  const out: MeetingTranscript[] = [];
+  while (url) {
+    const res = await graph(accessToken, url);
+    if (res.status === 404) return out;
+    if (!res.ok) {
+      throw new Error(`Graph getAllTranscripts ${res.status}: ${await res.text()}`);
+    }
+    const j = (await res.json()) as {
+      value?: Array<{
+        id: string;
+        meetingId: string;
+        createdDateTime?: string;
+        meetingOrganizer?: { user?: { displayName?: string; id?: string } };
+      }>;
+      "@odata.nextLink"?: string;
+    };
+    for (const t of j.value ?? []) {
+      if (!t.id || !t.meetingId) continue;
+      out.push({
+        id: t.id,
+        meetingId: t.meetingId,
+        createdDateTime: t.createdDateTime,
+        organizer:
+          t.meetingOrganizer?.user?.displayName ||
+          t.meetingOrganizer?.user?.id ||
+          undefined,
+      });
+    }
+    url = j["@odata.nextLink"] ?? "";
+  }
+  return out;
+}
+
+/** Descarga el contenido (WebVTT) de una transcripción. */
+export async function getTranscriptContent(
+  accessToken: string,
+  meetingId: string,
+  transcriptId: string
+): Promise<string> {
+  const res = await graph(
+    accessToken,
+    `/me/onlineMeetings/${meetingId}/transcripts/${transcriptId}/content?$format=text/vtt`
+  );
+  if (!res.ok) {
+    throw new Error(`Graph transcript content ${res.status}: ${await res.text()}`);
+  }
+  return res.text();
 }
 
 /** Mueve un item a la carpeta destino (por id). Renombra si hay colisión. */
