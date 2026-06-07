@@ -137,7 +137,7 @@ export default function NotasPage() {
 
       <div className="notas-layout">
         {/* Lista + búsqueda + paginación */}
-        <div className="card">
+        <div className="card notas-list-card">
           <input
             type="text"
             value={q}

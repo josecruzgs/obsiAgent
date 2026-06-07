@@ -1065,12 +1065,18 @@ code {
   gap: 18px;
   align-items: start;
 }
-/* En pantallas grandes la lista aprovecha el alto de la ventana y hace scroll
-   interno (la búsqueda y la paginación quedan fijas dentro de la tarjeta). */
+/* En pantallas grandes la tarjeta de la lista se acota al alto de la ventana y
+   su zona de scroll ocupa el espacio restante (búsqueda y paginación fijas
+   dentro de la tarjeta, sin desbordar la pantalla). */
+.notas-list-card {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 150px);
+}
 .notas-list-scroll {
+  flex: 1;
+  min-height: 120px;
   overflow-y: auto;
-  max-height: calc(100vh - 240px);
-  min-height: 360px;
 }
 .nota-item {
   transition: background 0.14s ease;
@@ -1183,7 +1189,11 @@ code {
     grid-template-columns: 1fr;
   }
   /* Apilado en móvil/tablet: la lista no necesita el alto completo. */
+  .notas-list-card {
+    max-height: none;
+  }
   .notas-list-scroll {
+    flex: none;
     max-height: 440px;
     min-height: 0;
   }
