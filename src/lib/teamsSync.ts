@@ -10,6 +10,7 @@
 import {
   getConnection,
   scopeOfConnection,
+  upsertConnection,
   type OneDriveConnection,
 } from "./connections";
 import {
@@ -20,6 +21,7 @@ import {
   type RecordingItem,
 } from "./onedrive";
 import { parseStreamTranscript } from "./extract";
+import { summarizeMeeting } from "./claude";
 import { query } from "./db";
 import { type Scope } from "./scope";
 import { loadIngestContext, ingestText } from "./ingest";
@@ -76,9 +78,16 @@ async function listAllRecordings(graphToken: string): Promise<RecordingItem[]> {
   return out;
 }
 
+export interface TeamsSyncOptions {
+  /** Trae las N grabaciones más recientes ignorando el corte "solo nuevas"
+   *  (para validar o rescatar reuniones concretas del backlog). */
+  backfill?: number;
+}
+
 /** Sincroniza una conexión concreta hacia su ámbito. */
 export async function runTeamsSyncForConnection(
-  conn: OneDriveConnection
+  conn: OneDriveConnection,
+  opts: TeamsSyncOptions = {}
 ): Promise<TeamsSyncResult> {
   if (!conn.refresh_token) {
     throw new Error("OneDrive no está conectado en esta conexión.");
@@ -105,6 +114,15 @@ export async function runTeamsSyncForConnection(
     return t;
   };
 
+  // Corte "solo nuevas": en la primera sincronización se fija la marca a AHORA
+  // para no traer el backlog viejo. A partir de ahí solo entran grabaciones
+  // creadas después de esa marca.
+  let since = conn.teams_since ? new Date(conn.teams_since) : null;
+  if (!since) {
+    since = new Date();
+    await upsertConnection(scope, { teams_since: since.toISOString() });
+  }
+
   // Idempotencia: ids ya ingeridos.
   const seen = new Set(
     (
@@ -113,7 +131,17 @@ export async function runTeamsSyncForConnection(
       )
     ).map((r) => r.external_id)
   );
-  const nuevos = recordings.filter((r) => !seen.has(extId(r.id)));
+  const noVistas = recordings.filter((r) => !seen.has(extId(r.id)));
+  const nuevos =
+    opts.backfill && opts.backfill > 0
+      ? // Backfill: las N más recientes sin importar el corte.
+        [...noVistas]
+          .sort((a, b) => (b.createdDateTime ?? "").localeCompare(a.createdDateTime ?? ""))
+          .slice(0, opts.backfill)
+      : // Normal: solo las creadas después del corte.
+        noVistas.filter(
+          (r) => r.createdDateTime && new Date(r.createdDateTime) > since!
+        );
   if (nuevos.length === 0) return { ...EMPTY, encontrados: recordings.length };
 
   const ctx = await loadIngestContext(scope);
@@ -139,15 +167,21 @@ export async function runTeamsSyncForConnection(
 
       const fecha = rec.createdDateTime ? rec.createdDateTime.slice(0, 10) : "";
       const titulo = tituloDeGrabacion(rec.name);
-      const meta: string[] = [];
-      if (fecha) meta.push(`Fecha: ${fecha}`);
-      meta.push(`Grabación: ${rec.name}`);
-      const body = `${meta.join("\n")}\n\n---\n\n${text}`;
+
+      // Lo que se ingiere es un RESUMEN generado por IA, no la transcripción cruda.
+      const resumen = await summarizeMeeting(text, fecha, titulo);
+      const encabezado = [
+        fecha ? `**Fecha:** ${fecha}` : "",
+        `**Origen:** Reunión de Teams — ${rec.name}`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+      const body = `${encabezado}\n\n${resumen}`;
 
       const hint = fecha ? `${titulo} (${fecha})` : titulo;
       const r = await ingestText(body, hint, ctx, {
         source: "teams",
-        tipo: "transcripcion",
+        tipo: "reunion",
         ...(rec.createdDateTime ? { created: rec.createdDateTime } : {}),
       });
 
@@ -176,10 +210,13 @@ export async function runTeamsSyncForConnection(
 }
 
 /** Sincroniza el Teams de un ámbito (para la UI). */
-export async function runTeamsSyncForScope(scope: Scope): Promise<TeamsSyncResult> {
+export async function runTeamsSyncForScope(
+  scope: Scope,
+  opts: TeamsSyncOptions = {}
+): Promise<TeamsSyncResult> {
   const conn = await getConnection(scope);
   if (!conn?.refresh_token) {
     throw new Error("OneDrive no está conectado en este ámbito.");
   }
-  return runTeamsSyncForConnection(conn);
+  return runTeamsSyncForConnection(conn, opts);
 }

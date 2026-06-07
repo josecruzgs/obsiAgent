@@ -22,6 +22,7 @@ export interface OneDriveConnection {
   last_sync: SyncSummary | null;
   tenant_id: string | null; // tid de Microsoft (para Teams app-only)
   ms_user_id: string | null; // oid/GUID del usuario (organizador de reuniones)
+  teams_since: Date | null; // corte: solo grabaciones creadas después de esta marca
 }
 
 export interface ConnectionPatch {
@@ -31,10 +32,11 @@ export interface ConnectionPatch {
   last_sync?: SyncSummary | null;
   tenant_id?: string | null;
   ms_user_id?: string | null;
+  teams_since?: Date | string | null;
 }
 
 const COLS =
-  "id, company_id, owner_user_id, refresh_token, account, folder, last_sync, tenant_id, ms_user_id";
+  "id, company_id, owner_user_id, refresh_token, account, folder, last_sync, tenant_id, ms_user_id, teams_since";
 
 export async function getConnection(
   scope: Scope
@@ -64,21 +66,22 @@ export async function upsertConnection(
   const msUserId = pick(patch.ms_user_id, cur?.ms_user_id);
   const lastSync = pick(patch.last_sync, cur?.last_sync);
   const lastSyncJson = lastSync ? JSON.stringify(lastSync) : null;
+  const teamsSince = pick(patch.teams_since, cur?.teams_since);
 
   if (cur) {
     await query(
       `update onedrive_connections
          set refresh_token = $3, account = $4, folder = $5, last_sync = $6,
-             tenant_id = $7, ms_user_id = $8, updated_at = now()
+             tenant_id = $7, ms_user_id = $8, teams_since = $9, updated_at = now()
        where company_id = $1 and owner_user_id is not distinct from $2`,
-      [scope.companyId, scope.userId, refresh, account, folder, lastSyncJson, tenantId, msUserId]
+      [scope.companyId, scope.userId, refresh, account, folder, lastSyncJson, tenantId, msUserId, teamsSince]
     );
   } else {
     await query(
       `insert into onedrive_connections
-         (company_id, owner_user_id, refresh_token, account, folder, last_sync, tenant_id, ms_user_id)
-       values ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [scope.companyId, scope.userId, refresh, account, folder, lastSyncJson, tenantId, msUserId]
+         (company_id, owner_user_id, refresh_token, account, folder, last_sync, tenant_id, ms_user_id, teams_since)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [scope.companyId, scope.userId, refresh, account, folder, lastSyncJson, tenantId, msUserId, teamsSince]
     );
   }
   return (await getConnection(scope))!;

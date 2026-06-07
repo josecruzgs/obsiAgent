@@ -57,8 +57,10 @@ export async function POST(req: NextRequest) {
       ? companyScope(user.company_id)
       : personalScope(user.company_id, user.id);
 
+  const backfill = Math.max(0, Number(new URL(req.url).searchParams.get("backfill")) || 0);
+
   try {
-    const r = await runTeamsSyncForScope(scope);
+    const r = await runTeamsSyncForScope(scope, backfill ? { backfill } : {});
     return NextResponse.json({ ok: true, ...r });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

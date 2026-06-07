@@ -79,6 +79,11 @@ async function run(): Promise<void> {
   // tenant_id (tid) y ms_user_id (oid/GUID del usuario). Se capturan al conectar.
   await query(`alter table onedrive_connections add column if not exists tenant_id text`);
   await query(`alter table onedrive_connections add column if not exists ms_user_id text`);
+  // Corte para Teams: solo se ingieren grabaciones creadas DESPUÉS de esta marca
+  // (se fija "ahora" en la primera sincronización para no traer el backlog viejo).
+  await query(
+    `alter table onedrive_connections add column if not exists teams_since timestamptz`
+  );
   // Una sola conexión empresarial por empresa, y una personal por usuario.
   await query(
     `create unique index if not exists onedrive_conn_company_uidx

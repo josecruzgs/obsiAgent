@@ -105,6 +105,56 @@ Reglas:
 }
 
 /**
+ * Resume una transcripción de reunión en Markdown estructurado (resumen, puntos
+ * clave, acuerdos/tareas, participantes). Lo que se ingiere al vault es ESTE
+ * resumen, no la transcripción cruda. Fiel: no inventa lo que no esté dicho.
+ */
+export async function summarizeMeeting(
+  transcript: string,
+  fecha: string,
+  hintTitle?: string
+): Promise<string> {
+  const userPrompt = `Transcripción de una reunión${fecha ? ` del ${fecha}` : ""}${
+    hintTitle ? ` (asunto: "${hintTitle}")` : ""
+  }:
+
+<transcripcion>
+${transcript.slice(0, 60000)}
+</transcripcion>
+
+Devuelve SOLO Markdown en español con esta estructura (omite una sección si no
+hay contenido para ella; no inventes datos que no estén en la transcripción):
+
+## Resumen
+2 a 4 frases con el objetivo y las conclusiones de la reunión.
+
+## Puntos clave
+- viñetas con los temas y decisiones tratados
+
+## Acuerdos y tareas
+- [ ] responsable (si se menciona) — tarea concreta
+
+## Participantes
+- nombres de los hablantes que aparezcan`;
+
+  const msg = await client().messages.create({
+    model: env.anthropicModel,
+    max_tokens: 1500,
+    system:
+      "Eres un asistente que resume reuniones de trabajo en español. Produces un " +
+      "resumen claro, fiel y bien estructurado en Markdown. Nunca inventas " +
+      "información que no esté presente en la transcripción.",
+    messages: [{ role: "user", content: userPrompt }],
+  });
+
+  return msg.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("")
+    .trim();
+}
+
+/**
  * Responde una pregunta usando los fragmentos recuperados como contexto (RAG).
  * `overview` (opcional) es el índice/MOC del vault: da panorama para preguntas
  * amplias aunque no haya notas detalladas relevantes.
