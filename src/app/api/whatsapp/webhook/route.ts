@@ -73,38 +73,55 @@ async function processMessage(msg: EvolutionMessage): Promise<void> {
   // Ignora: mensajes propios, grupos, vacíos.
   if (fromMe || !text || jid.endsWith("@g.us") || !jid) return;
 
-  // WhatsApp puede presentar al remitente como LID (id oculto). Para responder
-  // y filtrar por número, lo resolvemos a su teléfono real.
-  let sendJid = jid;
-  let phone = jid.split("@")[0];
+  // WhatsApp puede presentar al remitente como LID (id oculto). Para FILTRAR por
+  // número resolvemos su teléfono real; para RESPONDER intentamos primero la
+  // identidad original (el LID), porque así la sesión de cifrado coincide en
+  // todos los dispositivos del usuario (evita "esperando este mensaje"); si el
+  // envío al LID falla, caemos al teléfono.
+  let phoneJid: string | null = jid;
   if (jid.endsWith("@lid")) {
-    const pn = await resolvePhoneJid(jid);
-    if (!pn) {
+    phoneJid = await resolvePhoneJid(jid);
+    if (!phoneJid) {
       console.warn(`[whatsapp] no se pudo resolver el LID ${jid}; se ignora.`);
       return;
     }
-    sendJid = pn;
-    phone = pn.split("@")[0];
   }
+  const phone = phoneJid.split("@")[0];
+
+  // Destinos de respuesta, en orden de preferencia (identidad original primero).
+  const targets = jid === phoneJid ? [jid] : [jid, phoneJid];
 
   if (!isAllowed(phone)) {
     console.log(`[whatsapp] número no autorizado: ${phone}`);
-    void sendText(
-      sendJid,
+    void sendToFirst(
+      targets,
       "Lo siento, este número no está autorizado para consultar el vault."
-    ).catch((e) => console.error("[whatsapp] send error:", e));
+    );
     return;
   }
 
   // Muestra "escribiendo…" mientras el agente piensa (mejora la espera).
-  void sendPresence(sendJid, "composing");
+  void sendPresence(targets[0], "composing");
 
-  await handleQuery(sendJid, text).catch((e) =>
+  await handleQuery(targets, text).catch((e) =>
     console.error("[whatsapp] handleQuery error:", e)
   );
 }
 
-async function handleQuery(to: string, text: string): Promise<void> {
+/** Intenta enviar a cada destino en orden hasta que uno funcione. */
+async function sendToFirst(targets: string[], text: string): Promise<void> {
+  for (const to of targets) {
+    try {
+      await sendText(to, text);
+      console.log(`[whatsapp] enviado a ${to}`);
+      return;
+    } catch (e) {
+      console.error(`[whatsapp] send error (${to}):`, e);
+    }
+  }
+}
+
+async function handleQuery(targets: string[], text: string): Promise<void> {
   // WhatsApp consulta la base EMPRESARIAL de la empresa por defecto.
   const company = await getBootstrapCompany();
   const companyUser: User = {
@@ -119,5 +136,5 @@ async function handleQuery(to: string, text: string): Promise<void> {
   // Respuesta natural por chat: sin pie de "Fuentes" (el agente menciona el
   // origen en prosa si aporta).
   const result = await runAssistant(text, companyUser, { allowWrite: true });
-  await sendText(to, result.answer);
+  await sendToFirst(targets, result.answer);
 }
