@@ -1807,6 +1807,32 @@ code {
   min-height: 120px;
   overflow-y: auto;
 }
+/* En escritorio, la página de Notas llena EXACTAMENTE el panel de cristal:
+   nada de scroll externo; solo la lista (y el editor) hacen scroll interno. */
+@media (min-width: 821px) {
+  .main:has(.notas-layout) {
+    height: 100vh;
+  }
+  .content:has(.notas-layout) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .content:has(.notas-layout) .notas-layout {
+    flex: 1;
+    min-height: 0;
+    align-items: stretch; /* las dos columnas a la altura del cristal */
+  }
+  .content:has(.notas-layout) .notas-list-card {
+    max-height: none;
+    height: 100%;
+  }
+  .content:has(.notas-layout) .notas-editor-card {
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
 .nota-item {
   transition: background 0.14s ease;
 }

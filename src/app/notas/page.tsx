@@ -210,7 +210,7 @@ export default function NotasPage() {
         </div>
 
         {/* Editor */}
-        <div className="card">
+        <div className="card notas-editor-card">
           {selected ? (
             <>
               <label htmlFor="t">Título</label>
