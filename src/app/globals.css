@@ -533,10 +533,12 @@ html[data-bg] .page-bg {
   border-top: 1px solid var(--border);
   margin: 4px 0 2px;
 }
-/* Pie de la barra derecha: empuja el toggle de tema al fondo. */
+/* Pie de la barra derecha: empuja el toggle de tema al fondo, alineado a la derecha. */
 .rail-foot {
   margin-top: auto;
   padding-top: 10px;
+  display: flex;
+  justify-content: flex-end;
 }
 .sidebar-user {
   display: flex;

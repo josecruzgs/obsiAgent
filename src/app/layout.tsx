@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 // Aplica el tema guardado antes del primer pintado (evita parpadeo).
-const themeInit = `(function(){try{var d=document.documentElement;d.dataset.theme=localStorage.getItem('theme')||'dark';var b=localStorage.getItem('bgTheme');if(b&&b!=='none')d.dataset.bg=b;var a=localStorage.getItem('accent');if(a&&a!=='purple')d.dataset.accent=a;}catch(e){document.documentElement.dataset.theme='dark';}})();`;
+const themeInit = `(function(){try{var d=document.documentElement;d.dataset.theme=localStorage.getItem('theme')||'dark';var b=localStorage.getItem('bgTheme')||'1';if(b!=='none')d.dataset.bg=b;var a=localStorage.getItem('accent');if(a&&a!=='purple')d.dataset.accent=a;}catch(e){document.documentElement.dataset.theme='dark';}})();`;
 
 export default function RootLayout({
   children,

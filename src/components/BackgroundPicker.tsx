@@ -21,7 +21,7 @@ export default function BackgroundPicker() {
 
   useEffect(() => {
     const el = document.documentElement;
-    setBg((el.dataset.bg as Bg) || (localStorage.getItem("bgTheme") as Bg) || "none");
+    setBg((el.dataset.bg as Bg) || (localStorage.getItem("bgTheme") as Bg) || "1");
     setAccent(
       (el.dataset.accent as Accent) ||
         (localStorage.getItem("accent") as Accent) ||
