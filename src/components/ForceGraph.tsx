@@ -57,16 +57,22 @@ export default function ForceGraph({ data }: Props) {
 
   useEffect(() => {
     function update() {
-      if (wrapRef.current) {
-        setSize({
-          width: wrapRef.current.clientWidth,
-          height: 560,
-        });
-      }
+      const el = wrapRef.current;
+      if (!el) return;
+      // Alto = del tope del contenedor hasta el fondo de la ventana (menos el
+      // margen/padding del cristal), con un mínimo razonable.
+      const top = el.getBoundingClientRect().top;
+      const height = Math.max(420, Math.round(window.innerHeight - top - 52));
+      setSize({ width: el.clientWidth, height });
     }
     update();
+    // Segunda medición tras el layout (por si el header de la página cambió de alto).
+    const raf = requestAnimationFrame(update);
     window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", update);
+    };
   }, []);
 
   // react-force-graph muta el objeto data; le pasamos una copia.
