@@ -14,6 +14,10 @@ import {
   resolvePhoneJid,
 } from "@/lib/evolution";
 import { transcribeAudio, synthesizeSpeech } from "@/lib/audio";
+import { env } from "@/lib/env";
+
+// Petición explícita de hablar por llamada de voz (no nota de voz).
+const CALL_REQUEST = /(ll[aá]mame|ll[aá]mar|llamada de voz|hablar por voz|quiero (una )?llamada)/i;
 
 // uuid imposible: hace que el filtro "personal" no devuelva nada -> solo empresarial.
 const NO_USER = "00000000-0000-0000-0000-000000000000";
@@ -125,6 +129,15 @@ async function processMessage(msg: EvolutionMessage): Promise<void> {
       return;
     }
     console.log(`[whatsapp] audio transcrito: ${text.slice(0, 80)}`);
+  }
+
+  // Si pide hablar por LLAMADA de voz, mandamos el enlace a la web call.
+  if (CALL_REQUEST.test(text)) {
+    await sendToFirst(
+      targets,
+      `Claro 🎙️ Toca este enlace para hablar conmigo por voz:\n${env.publicBaseUrl}/voz`
+    );
+    return;
   }
 
   await handleQuery(targets, text, wasAudio).catch((e) =>
