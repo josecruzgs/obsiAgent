@@ -1207,17 +1207,6 @@ code {
   margin: 18px auto 8px;
   aspect-ratio: 1 / 1;
 }
-.agents-stage.scene {
-  background:
-    radial-gradient(circle at 50% 48%, rgba(28,86,98,0.55), rgba(6,18,26,0) 62%),
-    linear-gradient(rgba(120,200,210,0.045) 1px, transparent 1px) 0 0 / 30px 30px,
-    linear-gradient(90deg, rgba(120,200,210,0.045) 1px, transparent 1px) 0 0 / 30px 30px,
-    radial-gradient(circle at 50% 50%, #0a2230, #061119 82%);
-  border: 1px solid rgba(90,170,190,0.18);
-  border-radius: 18px;
-  overflow: hidden;
-  box-shadow: inset 0 0 90px rgba(0,0,0,0.55);
-}
 .agents-lines {
   position: absolute;
   inset: 0;
@@ -1466,66 +1455,49 @@ code {
   }
 }
 
-.agents-list {
-  max-width: 620px;
-  margin: 18px auto 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.agents-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 9px 6px;
-  border-bottom: 1px solid var(--border);
-}
-.agents-row-text {
-  display: flex;
-  flex-direction: column;
-}
-.agents-row-text .muted {
-  font-size: 12.5px;
-}
-.agents-row-meta {
-  margin-left: auto;
-  font-size: 12.5px;
-  white-space: nowrap;
+/* ─── Inicio: escena oscura full-width + línea de widgets ─────────────── */
+/* Contenedor de inicio: ocupa todo el ancho del área principal con la escena
+   oscura (grid + resplandor al centro), sangrando el padding de .content. */
+.home {
+  margin: -24px -32px -56px;
+  min-height: calc(100vh - 56px);
+  padding-bottom: 48px;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(28,86,98,0.5), rgba(6,18,26,0) 58%),
+    linear-gradient(rgba(120,200,210,0.05) 1px, transparent 1px) 0 0 / 30px 30px,
+    linear-gradient(90deg, rgba(120,200,210,0.05) 1px, transparent 1px) 0 0 / 30px 30px,
+    radial-gradient(circle at 50% 38%, #0a2230, #061119 85%);
 }
 
-/* ─── Inicio: fila superior de tarjetas + agentes en 2 columnas ───────── */
+/* Zona visual (constelación) a todo lo ancho; el cristal queda centrado. */
+.home-hero {
+  position: relative;
+  padding: 16px 24px 0;
+}
+.home-hero .agents-stage {
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+}
+.home-hero-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: -6px;
+}
+
+/* Línea de widgets debajo de la escena. */
 .home-top {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 14px;
-  margin: 14px 0 24px;
+  margin: 8px 0 0;
+  padding: 0 32px;
   align-items: stretch;
 }
 .home-top .stat,
 .home-top .action {
   height: 100%;
   margin: 0;
-}
-
-.agents-cols {
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-  gap: 24px;
-  align-items: center;
-}
-.agents-cols .agents-stage {
-  max-width: 520px;
-  width: 100%;
-  margin: 0 auto;
-}
-.agents-cols .agents-list {
-  max-width: none;
-  margin: 0;
-}
-@media (max-width: 900px) {
-  .agents-cols {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* ─── Botón de llamada de voz (Retell web call) ───────────────────────── */

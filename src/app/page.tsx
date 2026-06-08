@@ -52,23 +52,27 @@ export default async function Home() {
   const stats = await getStats();
 
   return (
-    <>
-      <h1>Tu base de conocimiento</h1>
-      <p className="subtitle">
-        Ingiere documentos, deja que la IA los conecte y consúltalos desde la web
-        o por WhatsApp.
-      </p>
+    <div className="home">
+      {/* Zona visual: escena oscura full-width con el orquestador y agentes. */}
+      <section className="home-hero">
+        <AgentsBoard />
+        <div className="home-hero-actions">
+          <VoiceCallButton />
+        </div>
+      </section>
 
       {!stats.ok && (
-        <div className="card">
-          <p className="error">
-            No se pudo conectar a la base de datos. Verifica que Postgres esté
-            corriendo.
-          </p>
+        <div className="home-top">
+          <div className="card" style={{ gridColumn: "1 / -1" }}>
+            <p className="error">
+              No se pudo conectar a la base de datos. Verifica que Postgres esté
+              corriendo.
+            </p>
+          </div>
         </div>
       )}
 
-      {/* Fila superior: stats + accesos, en línea. */}
+      {/* Línea de widgets: stats + accesos. */}
       <div className="home-top">
         <div className="stat">
           <div className="stat-head">
@@ -106,14 +110,6 @@ export default async function Home() {
           </Link>
         ))}
       </div>
-
-      {/* Agentes: diagrama (izq) + lista de funciones (der). */}
-      <h2 style={{ margin: "6px 0 0" }}>Agentes</h2>
-      <p className="subtitle" style={{ marginTop: 2 }}>
-        El orquestador coordina a los agentes. Se iluminan cuando trabajan.
-      </p>
-      <VoiceCallButton />
-      <AgentsBoard />
-    </>
+    </div>
   );
 }

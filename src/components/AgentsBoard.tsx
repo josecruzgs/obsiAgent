@@ -58,8 +58,7 @@ export default function AgentsBoard() {
   const anyWorking = agents.some((a) => a.running > 0);
 
   return (
-    <div className="agents-cols">
-      <div className="agents-stage scene">
+    <div className="agents-stage">
         <svg
           className="agents-lines"
           viewBox="0 0 100 100"
@@ -165,31 +164,6 @@ export default function AgentsBoard() {
             </div>
           );
         })}
-      </div>
-
-      <div className="agents-list">
-        {agents.map((ag) => {
-          const st = stateOf(ag);
-          return (
-            <div key={ag.key} className="agents-row">
-              <span className={`agent-dot ${st}`} />
-              <div className="agents-row-text">
-                <strong>{ag.label}</strong>
-                <span className="muted">{ag.description}</span>
-              </div>
-              <span className="agents-row-meta muted">
-                {ag.status === "soon"
-                  ? "—"
-                  : st === "working"
-                  ? "trabajando…"
-                  : `${ag.totalRuns} corridas${
-                      ag.lastTools.length ? ` · ${ag.lastTools.join(", ")}` : ""
-                    }`}
-              </span>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
