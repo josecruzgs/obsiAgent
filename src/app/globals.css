@@ -316,6 +316,7 @@ html[data-bg] .page-bg {
 .bg-opt-2::before,
 .bg-opt-3::before {
   left: 0;
+  background-position: left center; /* versión dark: parte izquierda de la imagen */
 }
 .bg-opt-1::after,
 .bg-opt-2::after,
