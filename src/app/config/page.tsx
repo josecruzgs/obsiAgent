@@ -33,6 +33,14 @@ interface SyncResult {
 
 type Kind = "company" | "personal";
 
+// Detecta errores que requieren volver a conectar (token inválido / MFA).
+function needsReauth(msg?: string): boolean {
+  if (!msg) return false;
+  return /AADSTS50076|invalid_grant|multi[-\s]?factor|OAuth token 40[01]|interaction_required|AADSTS7000(82|81)|consent/i.test(
+    msg
+  );
+}
+
 // Integraciones futuras (por ahora solo visuales). Sustituye los logos en
 // /public/images cuando se implementen.
 const INTEGRATIONS = [
@@ -231,6 +239,27 @@ function ScopeCard({
         </p>
       ) : (
         <p className="muted" style={{ marginTop: 10 }}>No conectado.</p>
+      )}
+
+      {data.connected && needsReauth(data.lastSync?.error) && (
+        <div className="reauth-banner">
+          <strong>⚠️ Reconecta OneDrive</strong>
+          <p>
+            El permiso de acceso expiró (tu organización ahora exige MFA), por eso
+            la sincronización automática está fallando. Vuelve a conectar para
+            reanudarla.
+          </p>
+          {canManage && (
+            <button
+              type="button"
+              onClick={() =>
+                (window.location.href = `/api/onedrive/connect?scope=${kind}`)
+              }
+            >
+              Reconectar OneDrive
+            </button>
+          )}
+        </div>
       )}
 
       {!canManage ? (

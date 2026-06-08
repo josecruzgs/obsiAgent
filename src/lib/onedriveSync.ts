@@ -33,7 +33,18 @@ export interface SyncResult {
 
 export async function runSync(conn: OneDriveConnection): Promise<SyncResult> {
   const scope = scopeOfConnection(conn);
-  const token = await getAccessToken(scope);
+  // Si el refresh token ya no sirve (p. ej. AADSTS50076: requiere MFA), guardamos
+  // el error en last_sync para que /config muestre "reconecta", y relanzamos.
+  let token: string;
+  try {
+    token = await getAccessToken(scope);
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    await upsertConnection(scope, {
+      last_sync: { at: new Date().toISOString(), ok: 0, failed: 0, error },
+    }).catch(() => {});
+    throw err;
+  }
   const files = await listFolderFiles(token, conn.folder);
 
   const empty: SyncResult = {
