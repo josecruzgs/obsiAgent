@@ -10,7 +10,7 @@ import {
   listConnectedConnections,
 } from "@/lib/connections";
 import { companyScope, personalScope } from "@/lib/scope";
-import { runSync } from "@/lib/onedriveSync";
+import { runSync, runSharePointSync } from "@/lib/onedriveSync";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -29,6 +29,18 @@ export async function POST(req: NextRequest) {
           scope: conn.owner_user_id ? "personal" : "company",
           error: err instanceof Error ? err.message : String(err),
         });
+      }
+      // SharePoint adjunto a la conexión empresarial (si está configurado).
+      if (!conn.owner_user_id && conn.sharepoint?.siteUrl) {
+        try {
+          const r = await runSharePointSync(conn);
+          resultados.push({ scope: "sharepoint", ...r });
+        } catch (err) {
+          resultados.push({
+            scope: "sharepoint",
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
       }
     }
     return NextResponse.json({ ok: true, conexiones: conns.length, resultados });

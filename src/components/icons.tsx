@@ -171,6 +171,38 @@ export function IconLogout(p: SVGProps<SVGSVGElement>) {
   );
 }
 
+// Moneda con símbolo de dólar (costos / estimación).
+export function IconCoins(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...svgProps(p)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v10" />
+      <path d="M14.6 9.2c-.5-.8-1.5-1.2-2.6-1.2-1.6 0-2.6.8-2.6 2 0 2.6 5.4 1.4 5.4 4 0 1.2-1 2-2.8 2-1.2 0-2.2-.5-2.7-1.3" />
+    </svg>
+  );
+}
+
+// Chevron hacia abajo (plegar / desplegar secciones).
+export function IconChevron(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...svgProps(p)}>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+// Paleta de colores (tema / acento).
+export function IconPalette(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...svgProps(p)}>
+      <path d="M12 3a9 9 0 1 0 0 18c1 0 1.7-.8 1.7-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.1 0-.9.8-1.6 1.7-1.6H16a5 5 0 0 0 5-5c0-3.9-4-7.4-9-7.4Z" />
+      <circle cx="7.5" cy="10.5" r="1" />
+      <circle cx="12" cy="7.5" r="1" />
+      <circle cx="16.5" cy="10.5" r="1" />
+    </svg>
+  );
+}
+
 // Marca de la app (sparkle de 4 puntas, estilo "IA").
 export function IconLogo(p: SVGProps<SVGSVGElement>) {
   return (

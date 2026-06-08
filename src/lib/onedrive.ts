@@ -10,10 +10,12 @@ const GRAPH = "https://graph.microsoft.com/v1.0";
 // offline_access -> refresh_token; Files.ReadWrite -> archivos; openid/profile ->
 // id_token (de ahí sacamos tenant id + user id para Teams app-only por-tenant).
 const SCOPES_BASIC = "openid profile offline_access User.Read Files.ReadWrite";
-// Solo la conexión EMPRESARIAL (M365) pide además leer transcripciones de Teams.
+// Solo la conexión EMPRESARIAL (M365) pide además: leer transcripciones de Teams
+// y leer sitios de SharePoint (bibliotecas de documentos del equipo, solo lectura).
 // (Las cuentas personales outlook.com no soportan estos permisos.)
 const SCOPES_FULL =
-  SCOPES_BASIC + " OnlineMeetings.Read OnlineMeetingTranscript.Read.All";
+  SCOPES_BASIC +
+  " OnlineMeetings.Read OnlineMeetingTranscript.Read.All Sites.Read.All";
 
 function scopesFor(full: boolean): string {
   return full ? SCOPES_FULL : SCOPES_BASIC;
@@ -155,6 +157,62 @@ export async function getAccount(accessToken: string): Promise<string> {
   return j.userPrincipalName || j.mail || j.displayName || "";
 }
 
+// ─── SharePoint: resolver sitio + biblioteca de documentos (drive) ──────────
+
+export interface SharePointDrive {
+  siteId: string;
+  siteName: string;
+  driveId: string;
+  driveName: string;
+}
+
+/**
+ * Resuelve una URL de sitio de SharePoint (p. ej.
+ * `https://contoso.sharepoint.com/sites/Equipo`) a su biblioteca de documentos
+ * por defecto, devolviendo los ids necesarios para listar/descargar archivos.
+ * Requiere el permiso `Sites.Read.All`.
+ */
+export async function resolveSharePointDrive(
+  accessToken: string,
+  siteUrl: string
+): Promise<SharePointDrive> {
+  let host: string;
+  let path: string;
+  try {
+    const u = new URL(siteUrl.trim());
+    host = u.host;
+    path = u.pathname.replace(/\/+$/, ""); // p. ej. /sites/Equipo  (o "" si raíz)
+  } catch {
+    throw new Error("URL de SharePoint inválida.");
+  }
+
+  // /sites/{host}:/{server-relative-path}  (sin path = sitio raíz del host)
+  const siteEndpoint = path ? `/sites/${host}:${path}` : `/sites/${host}`;
+  const siteRes = await graph(accessToken, `${siteEndpoint}?$select=id,displayName,name`);
+  if (siteRes.status === 403) {
+    throw new Error(
+      "Sin permiso para leer SharePoint (falta consentir Sites.Read.All en Entra y reconectar)."
+    );
+  }
+  if (!siteRes.ok) {
+    throw new Error(`No se encontró el sitio (${siteRes.status}). Revisa la URL.`);
+  }
+  const site = (await siteRes.json()) as { id: string; displayName?: string; name?: string };
+
+  const driveRes = await graph(accessToken, `/sites/${site.id}/drive?$select=id,name`);
+  if (!driveRes.ok) {
+    throw new Error(`No se pudo abrir la biblioteca del sitio (${driveRes.status}).`);
+  }
+  const drive = (await driveRes.json()) as { id: string; name?: string };
+
+  return {
+    siteId: site.id,
+    siteName: site.displayName || site.name || path || host,
+    driveId: drive.id,
+    driveName: drive.name || "Documentos",
+  };
+}
+
 export interface DriveFile {
   id: string;
   name: string;
@@ -163,14 +221,19 @@ export interface DriveFile {
 /**
  * Lista los archivos soportados del primer nivel de `folder` (ignora subcarpetas
  * como procesados/fallidos). Devuelve [] si la carpeta no existe todavía.
+ * `driveBase` permite apuntar a otro drive (p. ej. `/drives/{id}` de SharePoint);
+ * por defecto el OneDrive del usuario (`/me/drive`).
  */
 export async function listFolderFiles(
   accessToken: string,
-  folder: string
+  folder: string,
+  driveBase = "/me/drive"
 ): Promise<DriveFile[]> {
-  let url = `${GRAPH}/me/drive/root:/${encPath(
-    folder
-  )}:/children?$select=id,name,folder,file&$top=200`;
+  // Carpeta vacía = raíz del drive (lista todo el primer nivel).
+  const base = folder
+    ? `${GRAPH}${driveBase}/root:/${encPath(folder)}:/children`
+    : `${GRAPH}${driveBase}/root/children`;
+  let url = `${base}?$select=id,name,folder,file&$top=200`;
   const out: DriveFile[] = [];
   while (url) {
     const res = await graph(accessToken, url);
@@ -193,9 +256,10 @@ export async function listFolderFiles(
 
 export async function downloadFile(
   accessToken: string,
-  id: string
+  id: string,
+  driveBase = "/me/drive"
 ): Promise<Buffer> {
-  const res = await graph(accessToken, `/me/drive/items/${id}/content`);
+  const res = await graph(accessToken, `${driveBase}/items/${id}/content`);
   if (!res.ok) throw new Error(`Graph download ${res.status}`);
   return Buffer.from(await res.arrayBuffer());
 }
@@ -204,15 +268,16 @@ export async function downloadFile(
 export async function ensureFolder(
   accessToken: string,
   parent: string,
-  name: string
+  name: string,
+  driveBase = "/me/drive"
 ): Promise<string> {
   const full = `${parent}/${name}`;
-  const get = await graph(accessToken, `/me/drive/root:/${encPath(full)}`);
+  const get = await graph(accessToken, `${driveBase}/root:/${encPath(full)}`);
   if (get.ok) return ((await get.json()) as { id: string }).id;
 
   const res = await graph(
     accessToken,
-    `/me/drive/root:/${encPath(parent)}:/children`,
+    `${driveBase}/root:/${encPath(parent)}:/children`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -226,7 +291,7 @@ export async function ensureFolder(
   if (res.ok) return ((await res.json()) as { id: string }).id;
   if (res.status === 409) {
     // Creada por una corrida concurrente: vuelve a leerla.
-    const g2 = await graph(accessToken, `/me/drive/root:/${encPath(full)}`);
+    const g2 = await graph(accessToken, `${driveBase}/root:/${encPath(full)}`);
     return ((await g2.json()) as { id: string }).id;
   }
   throw new Error(`Graph mkdir ${res.status}: ${await res.text()}`);
@@ -527,9 +592,10 @@ function concatChunks(parts: Uint8Array[]): Uint8Array {
 export async function moveItem(
   accessToken: string,
   itemId: string,
-  destFolderId: string
+  destFolderId: string,
+  driveBase = "/me/drive"
 ): Promise<void> {
-  const res = await graph(accessToken, `/me/drive/items/${itemId}`, {
+  const res = await graph(accessToken, `${driveBase}/items/${itemId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

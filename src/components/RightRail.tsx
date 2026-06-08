@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import BackgroundPicker from "./BackgroundPicker";
 import ThemeToggle from "./ThemeToggle";
+import CostEstimator from "./CostEstimator";
+import { IconUsers, IconCloudUpload, IconLink } from "./icons";
 
 interface SyncSummary {
   at: string;
@@ -65,7 +67,10 @@ export default function RightRail() {
     <aside className="rail">
       {/* Cuenta / empresa */}
       <div className="widget">
-        <h3>Cuenta</h3>
+        <h3>
+          <IconUsers className="widget-ico" />
+          Cuenta
+        </h3>
         <div className="widget-row">
           <span className="k">Empresa</span>
           <span className="v">{me?.company?.name ?? "—"}</span>
@@ -86,7 +91,10 @@ export default function RightRail() {
 
       {/* OneDrive */}
       <div className="widget">
-        <h3>OneDrive</h3>
+        <h3>
+          <IconCloudUpload className="widget-ico" />
+          OneDrive
+        </h3>
 
         {od?.isSuperadmin && (
           <>
@@ -142,12 +150,18 @@ export default function RightRail() {
         )}
       </div>
 
+      {/* Costos estimados de las APIs según el uso */}
+      <CostEstimator />
+
       {/* Fondo (3 temas con imagen) */}
       <BackgroundPicker />
 
       {/* Atajos */}
       <div className="widget">
-        <h3>Atajos</h3>
+        <h3>
+          <IconLink className="widget-ico" />
+          Atajos
+        </h3>
         <div className="widget-row">
           <Link href="/ingest" className="k">Ingerir documentos</Link>
         </div>

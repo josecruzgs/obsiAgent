@@ -19,6 +19,8 @@ export const AGENTS: AgentInfo[] = [
   { key: "status", label: "Status", description: "Mantiene la nota de estado por cliente", status: "active" },
   { key: "curador", label: "Curador", description: "Detecta near-duplicados y enriquece enlaces del grafo", status: "active" },
   { key: "enrutador", label: "Enrutador", description: "Clasifica notas por cliente/proyecto (tags)", status: "active" },
+  { key: "onedrive", label: "OneDrive", description: "Trae documentos de OneDrive y los digiere con Claude", status: "active" },
+  { key: "sharepoint", label: "SharePoint", description: "Trae documentos de una biblioteca de SharePoint y los digiere con Claude", status: "active" },
 ];
 
 interface Live {

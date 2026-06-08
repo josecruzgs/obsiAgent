@@ -12,6 +12,15 @@ export interface SyncSummary {
   error?: string;
 }
 
+// Config de SharePoint adjunta a la conexión EMPRESARIAL (misma cuenta de trabajo).
+// Vacío/null = SharePoint no configurado.
+export interface SharePointConfig {
+  siteUrl: string; // https://host/sites/Equipo
+  folder: string; // ruta dentro de la biblioteca ("" = raíz)
+  siteName?: string; // nombre legible (cacheado al validar)
+  lastSync?: SyncSummary | null;
+}
+
 export interface OneDriveConnection {
   id: string;
   company_id: string;
@@ -23,6 +32,7 @@ export interface OneDriveConnection {
   tenant_id: string | null; // tid de Microsoft (para Teams app-only)
   ms_user_id: string | null; // oid/GUID del usuario (organizador de reuniones)
   teams_since: Date | null; // corte: solo grabaciones creadas después de esta marca
+  sharepoint: SharePointConfig | null; // config de SharePoint (solo empresarial)
 }
 
 export interface ConnectionPatch {
@@ -33,10 +43,11 @@ export interface ConnectionPatch {
   tenant_id?: string | null;
   ms_user_id?: string | null;
   teams_since?: Date | string | null;
+  sharepoint?: SharePointConfig | null;
 }
 
 const COLS =
-  "id, company_id, owner_user_id, refresh_token, account, folder, last_sync, tenant_id, ms_user_id, teams_since";
+  "id, company_id, owner_user_id, refresh_token, account, folder, last_sync, tenant_id, ms_user_id, teams_since, sharepoint";
 
 export async function getConnection(
   scope: Scope
@@ -67,21 +78,24 @@ export async function upsertConnection(
   const lastSync = pick(patch.last_sync, cur?.last_sync);
   const lastSyncJson = lastSync ? JSON.stringify(lastSync) : null;
   const teamsSince = pick(patch.teams_since, cur?.teams_since);
+  const sharepoint = pick(patch.sharepoint, cur?.sharepoint);
+  const sharepointJson = sharepoint ? JSON.stringify(sharepoint) : null;
 
   if (cur) {
     await query(
       `update onedrive_connections
          set refresh_token = $3, account = $4, folder = $5, last_sync = $6,
-             tenant_id = $7, ms_user_id = $8, teams_since = $9, updated_at = now()
+             tenant_id = $7, ms_user_id = $8, teams_since = $9, sharepoint = $10,
+             updated_at = now()
        where company_id = $1 and owner_user_id is not distinct from $2`,
-      [scope.companyId, scope.userId, refresh, account, folder, lastSyncJson, tenantId, msUserId, teamsSince]
+      [scope.companyId, scope.userId, refresh, account, folder, lastSyncJson, tenantId, msUserId, teamsSince, sharepointJson]
     );
   } else {
     await query(
       `insert into onedrive_connections
-         (company_id, owner_user_id, refresh_token, account, folder, last_sync, tenant_id, ms_user_id, teams_since)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [scope.companyId, scope.userId, refresh, account, folder, lastSyncJson, tenantId, msUserId, teamsSince]
+         (company_id, owner_user_id, refresh_token, account, folder, last_sync, tenant_id, ms_user_id, teams_since, sharepoint)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [scope.companyId, scope.userId, refresh, account, folder, lastSyncJson, tenantId, msUserId, teamsSince, sharepointJson]
     );
   }
   return (await getConnection(scope))!;

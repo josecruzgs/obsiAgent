@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { IconPalette } from "./icons";
 
 // Fondo: "none" = sin imagen. "1"|"2"|"3" usan /public/images/{n}.jpg.
 type Bg = "none" | "1" | "2" | "3";
@@ -53,7 +54,10 @@ export default function BackgroundPicker() {
 
   return (
     <div className="widget">
-      <h3>Tema</h3>
+      <h3>
+        <IconPalette className="widget-ico" />
+        Tema
+      </h3>
 
       <span className="theme-sub">Color de acento</span>
       <div className="accent-picker">

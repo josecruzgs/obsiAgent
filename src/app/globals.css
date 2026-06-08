@@ -684,12 +684,73 @@ html[data-bg] .page-bg {
   padding: 16px;
 }
 .widget h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0 0 12px;
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--muted);
   font-weight: 700;
+}
+/* Icono del título de cada widget. */
+.widget-ico {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+/* Cabecera plegable: título normal a la izquierda, total + flecha a la derecha.
+   Solo la flecha es el botón. */
+.fold-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.fold-head h3 {
+  margin: 0;
+}
+.fold-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fold-total {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+/* Botón "solo flecha": sin fondo, borde ni sombra (no hereda el botón global). */
+.fold-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: none;
+  border: none;
+  box-shadow: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--muted);
+}
+.fold-toggle:hover {
+  background: var(--panel-2);
+  box-shadow: none;
+  transform: none;
+  color: var(--text);
+}
+.fold-chevron {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.18s ease;
+}
+.fold-chevron.open {
+  transform: rotate(180deg);
+}
+.widget-fold-body {
+  margin-top: 14px;
 }
 .widget-row {
   display: flex;
@@ -714,6 +775,58 @@ html[data-bg] .page-bg {
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1;
+}
+/* ─── Estimador de costos (rail) ──────────────────────────────────────── */
+.cost-row {
+  display: grid;
+  grid-template-columns: 1fr 48px 52px;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+}
+.cost-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.cost-label > span:first-child {
+  font-size: 12.5px;
+  line-height: 1.2;
+}
+.cost-unit {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.cost-input {
+  width: 100%;
+  padding: 5px 6px !important;
+  font-size: 12px !important;
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.cost-input::-webkit-outer-spin-button,
+.cost-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.cost-sub {
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+}
+.cost-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+.cost-total strong {
+  font-size: 17px;
+  letter-spacing: -0.01em;
 }
 .badge {
   display: inline-block;
@@ -1080,9 +1193,45 @@ h2 {
 .integration-card strong {
   font-size: 13px;
 }
+/* Empuja el botón/acción al pie para que todas las tarjetas queden parejas. */
 .integration-card button {
   width: 100%;
   padding: 8px 10px;
+  font-size: 13px;
+  margin-top: auto;
+}
+/* Línea de estado (Conectado / No conectado / Próximamente). */
+.integration-status {
+  font-size: 12px;
+  line-height: 1.2;
+}
+.integration-status.ok {
+  color: var(--up);
+}
+.integration-status.muted {
+  color: var(--muted);
+}
+.integration-status.warn {
+  color: #f59e0b;
+}
+/* Tarjeta cuyo panel de gestión está abierto. */
+.integration-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+/* Panel de gestión desplegado bajo la rejilla. */
+.integration-detail {
+  margin-top: 14px;
+}
+.integration-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.integration-detail-head .secondary {
+  width: auto;
+  padding: 6px 14px;
   font-size: 13px;
 }
 @media (max-width: 1100px) {

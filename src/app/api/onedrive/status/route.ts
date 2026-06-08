@@ -19,6 +19,19 @@ function summary(conn: OneDriveConnection | null) {
   };
 }
 
+// Estado de SharePoint (adjunto a la conexión empresarial / cuenta de trabajo).
+function sharepointSummary(company: OneDriveConnection | null) {
+  const sp = company?.sharepoint ?? null;
+  return {
+    available: Boolean(company?.refresh_token), // hay cuenta de trabajo conectada
+    configured: Boolean(sp?.siteUrl),
+    siteUrl: sp?.siteUrl ?? "",
+    siteName: sp?.siteName ?? "",
+    folder: sp?.folder ?? "",
+    lastSync: sp?.lastSync ?? null,
+  };
+}
+
 export async function GET() {
   try {
     const user = await requireUser();
@@ -30,6 +43,7 @@ export async function GET() {
       isSuperadmin: user.role === "superadmin",
       company: summary(company),
       personal: summary(personal),
+      sharepoint: sharepointSummary(company),
     });
   } catch (err) {
     return (

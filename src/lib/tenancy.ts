@@ -91,6 +91,10 @@ async function run(): Promise<void> {
   await query(
     `alter table onedrive_connections add column if not exists teams_since timestamptz`
   );
+  // Config de SharePoint adjunta a la conexión empresarial (sitio + carpeta).
+  await query(
+    `alter table onedrive_connections add column if not exists sharepoint jsonb`
+  );
   // Una sola conexión empresarial por empresa, y una personal por usuario.
   await query(
     `create unique index if not exists onedrive_conn_company_uidx
