@@ -48,6 +48,20 @@ html[data-theme="dark"] {
   color-scheme: dark;
 }
 
+/* Acento elegible (sidebar derecha → Tema). Morado es el default (:root). */
+html[data-accent="green"] {
+  --accent: #16c784;
+  --accent-soft: rgba(22, 199, 132, 0.16);
+}
+html[data-accent="blue"] {
+  --accent: #4dabf7;
+  --accent-soft: rgba(77, 171, 247, 0.16);
+}
+html[data-accent="orange"] {
+  --accent: #ff8c42;
+  --accent-soft: rgba(255, 140, 66, 0.16);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -229,7 +243,36 @@ html[data-bg] .page-bg {
   display: none;
 }
 
-/* Selector de fondo (RightRail) */
+/* Selector de tema (RightRail): acento + fondo */
+.theme-sub {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin: 2px 0 7px;
+}
+.theme-sub + .accent-picker {
+  margin-bottom: 14px;
+}
+.accent-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.accent-opt {
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s, box-shadow 0.2s, border-color 0.2s;
+}
+.accent-opt:hover {
+  transform: translateY(-1px);
+}
+.accent-opt.active {
+  border-color: var(--text);
+  box-shadow: 0 0 0 2px var(--bg);
+}
 .bg-picker {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
