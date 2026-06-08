@@ -33,6 +33,17 @@ interface SyncResult {
 
 type Kind = "company" | "personal";
 
+// Integraciones futuras (por ahora solo visuales). Sustituye los logos en
+// /public/images cuando se implementen.
+const INTEGRATIONS = [
+  { name: "Google Drive", logo: "/images/integ-drive.svg" },
+  { name: "Google Meet", logo: "/images/integ-meet.svg" },
+  { name: "Dropbox", logo: "/images/integ-dropbox.svg" },
+  { name: "PLAUD", logo: "/images/integ-plaud.svg" },
+  { name: "Notion", logo: "/images/integ-notion.svg" },
+  { name: "Slack", logo: "/images/integ-slack.svg" },
+];
+
 export default function ConfigPage() {
   const [status, setStatus] = useState<Status | null>(null);
   const [banner, setBanner] = useState<{ kind: "ok" | "error"; msg: string } | null>(null);
@@ -94,6 +105,34 @@ export default function ConfigPage() {
           />
         </div>
       )}
+
+      {/* Más fuentes (próximamente, solo visual por ahora). */}
+      <h2 style={{ margin: "10px 0 2px" }}>Más integraciones</h2>
+      <p className="subtitle" style={{ marginTop: 0 }}>
+        Conecta otras fuentes para ingerir tu información (próximamente).
+      </p>
+      <div className="integrations">
+        {INTEGRATIONS.map((it) => (
+          <div key={it.name} className="integration-card">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={it.logo} alt={it.name} className="integration-logo" />
+            <strong>{it.name}</strong>
+            <button
+              type="button"
+              className="secondary"
+              title="Próximamente"
+              onClick={() =>
+                setBanner({
+                  kind: "ok",
+                  msg: `${it.name}: integración próximamente.`,
+                })
+              }
+            >
+              Conectar
+            </button>
+          </div>
+        ))}
+      </div>
     </>
   );
 }
