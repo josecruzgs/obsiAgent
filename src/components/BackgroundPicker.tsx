@@ -62,7 +62,7 @@ export default function BackgroundPicker() {
             key={a.key}
             type="button"
             className={`accent-opt${accent === a.key ? " active" : ""}`}
-            style={{ background: a.color }}
+            style={{ ["--ac"]: a.color } as React.CSSProperties}
             onClick={() => chooseAccent(a.key)}
             title={a.label}
             aria-label={`Acento ${a.label}`}

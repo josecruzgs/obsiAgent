@@ -271,13 +271,18 @@ html[data-bg] .page-bg {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+  justify-items: center;
 }
+/* Anillo de línea + punto de color al centro (background-clip content-box). */
 .accent-opt {
-  aspect-ratio: 1 / 1;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  border: 2px solid transparent;
+  border: 1.5px solid var(--border);
+  background: var(--ac);
+  background-clip: content-box;
+  padding: 5px;
   cursor: pointer;
-  padding: 0;
   transition: transform 0.1s, box-shadow 0.2s, border-color 0.2s;
 }
 .accent-opt:hover {
@@ -292,31 +297,56 @@ html[data-bg] .page-bg {
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
 }
-/* Miniaturas duales: oscuras por defecto, claras en modo claro. */
-.bg-opt-1 {
+/* Miniaturas partidas: mitad izquierda = versión dark, mitad derecha = light. */
+.bg-opt-1::before,
+.bg-opt-2::before,
+.bg-opt-3::before,
+.bg-opt-1::after,
+.bg-opt-2::after,
+.bg-opt-3::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background-size: cover;
+  background-position: center;
+}
+.bg-opt-1::before,
+.bg-opt-2::before,
+.bg-opt-3::before {
+  left: 0;
+}
+.bg-opt-1::after,
+.bg-opt-2::after,
+.bg-opt-3::after {
+  right: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+}
+.bg-opt-1::before {
   background-image: url("/images/1.jpg");
 }
-.bg-opt-2 {
-  background-image: url("/images/2.jpg");
-}
-.bg-opt-3 {
-  background-image: url("/images/3.jpg");
-}
-html:not([data-theme="dark"]) .bg-opt-1 {
+.bg-opt-1::after {
   background-image: url("/images/1light.jpg");
 }
-html:not([data-theme="dark"]) .bg-opt-2 {
+.bg-opt-2::before {
+  background-image: url("/images/2.jpg");
+}
+.bg-opt-2::after {
   background-image: url("/images/2light.jpg");
 }
-html:not([data-theme="dark"]) .bg-opt-3 {
+.bg-opt-3::before {
+  background-image: url("/images/3.jpg");
+}
+.bg-opt-3::after {
   background-image: url("/images/3light.jpg");
 }
 .bg-opt {
+  position: relative;
+  overflow: hidden;
   aspect-ratio: 1 / 1;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background-size: cover;
-  background-position: center;
   background-color: var(--panel-2);
   cursor: pointer;
   padding: 0;
