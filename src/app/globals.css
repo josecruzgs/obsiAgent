@@ -1214,6 +1214,22 @@ h2 {
 .integration-status.warn {
   color: #f59e0b;
 }
+/* Fila "Incluye": iconos de los servicios que habilita la conexión (pre-conectar). */
+.integration-enables {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.integration-enables-label {
+  font-size: 10px;
+  color: var(--muted);
+  margin-right: 1px;
+}
+.integration-enables img {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+}
 /* Tarjeta cuyo panel de gestión está abierto. */
 .integration-card.active {
   border-color: var(--accent);

@@ -218,6 +218,17 @@ function OneDriveTile({
     );
   else status = <span className="integration-status muted">No conectado</span>;
 
+  // Servicios que habilita esta conexión (la empresarial es una cuenta de
+  // trabajo M365: incluye OneDrive, Teams y SharePoint; la personal solo OneDrive).
+  const enables =
+    kind === "company"
+      ? [
+          { src: ONEDRIVE_LOGO, name: "OneDrive" },
+          { src: TEAMS_LOGO, name: "Teams" },
+          { src: SHAREPOINT_LOGO, name: "SharePoint" },
+        ]
+      : [{ src: ONEDRIVE_LOGO, name: "OneDrive" }];
+
   let action: React.ReactNode;
   if (!canManage) {
     action = (
@@ -248,6 +259,18 @@ function OneDriveTile({
       <img src={ONEDRIVE_LOGO} alt={name} className="integration-logo" />
       <strong>{name}</strong>
       {status}
+      {!data.connected && (
+        <div
+          className="integration-enables"
+          title={`Al conectar habilitas: ${enables.map((e) => e.name).join(", ")}`}
+        >
+          <span className="integration-enables-label">Incluye</span>
+          {enables.map((e) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={e.name} src={e.src} alt={e.name} />
+          ))}
+        </div>
+      )}
       {action}
     </div>
   );
