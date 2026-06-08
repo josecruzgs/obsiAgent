@@ -111,7 +111,7 @@ export default function IngestPage() {
   }
 
   return (
-    <>
+    <div className="ingest">
       <h1>Ingerir documentos</h1>
       <p className="subtitle">
         Sube archivos (PDF, Word, texto, Markdown) o pega texto. Claude generará
@@ -137,6 +137,8 @@ export default function IngestPage() {
         </p>
       </div>
 
+      <div className="ingest-cols">
+        <div className="ingest-col">
       {/* ── Subir archivos ── */}
       <form onSubmit={handleUpload} className="card">
         <h2 className="card-title">
@@ -239,7 +241,9 @@ export default function IngestPage() {
           )}
         </div>
       )}
+        </div>
 
+        <div className="ingest-col">
       {/* ── Pegar texto ── */}
       <form onSubmit={handleText} className="card">
         <h2 className="card-title">
@@ -294,6 +298,8 @@ export default function IngestPage() {
           )}
         </div>
       )}
-    </>
+        </div>
+      </div>
+    </div>
   );
 }

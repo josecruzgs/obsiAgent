@@ -697,6 +697,29 @@ h2 {
   backdrop-filter: var(--acrylic);
 }
 
+/* ─── Ingesta: contenedor centrado + 2 columnas ──────────────────────── */
+.ingest {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.ingest-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.ingest-col {
+  min-width: 0;
+}
+.ingest-col .card {
+  margin-bottom: 18px;
+}
+@media (max-width: 860px) {
+  .ingest-cols {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ─── Formularios ────────────────────────────────────────────────────── */
 label {
   display: block;
