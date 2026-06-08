@@ -98,7 +98,11 @@ export const env = {
       apiKey: optional("OPENAI_API_KEY"),
       sttModel: optional("OPENAI_STT_MODEL", "whisper-1"),
       ttsModel: optional("OPENAI_TTS_MODEL", "gpt-4o-mini-tts"),
-      ttsVoice: optional("OPENAI_TTS_VOICE", "alloy"),
+      ttsVoice: optional("OPENAI_TTS_VOICE", "nova"),
+      ttsInstructions: optional(
+        "OPENAI_TTS_INSTRUCTIONS",
+        "Habla en español con acento latinoamericano neutro (mexicano), con voz femenina cálida, natural y cercana. Ritmo tranquilo y claro."
+      ),
     };
   },
 

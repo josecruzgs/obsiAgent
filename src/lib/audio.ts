@@ -34,7 +34,7 @@ export async function transcribeAudio(data: Buffer, mimetype = "audio/ogg"): Pro
 
 /** Texto → voz (TTS). Devuelve el audio en OGG/Opus (formato de nota de voz). */
 export async function synthesizeSpeech(text: string): Promise<Buffer> {
-  const { apiKey, ttsModel, ttsVoice } = env.openai;
+  const { apiKey, ttsModel, ttsVoice, ttsInstructions } = env.openai;
   if (!apiKey) throw new Error("Falta OPENAI_API_KEY (audio).");
 
   const res = await fetch("https://api.openai.com/v1/audio/speech", {
@@ -47,6 +47,8 @@ export async function synthesizeSpeech(text: string): Promise<Buffer> {
       model: ttsModel,
       voice: ttsVoice,
       input: text.slice(0, 4000),
+      // Guía de acento/tono (solo aplica en gpt-4o-mini-tts y posteriores).
+      instructions: ttsInstructions,
       response_format: "opus", // OGG/Opus = nota de voz de WhatsApp
     }),
   });
