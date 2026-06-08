@@ -73,7 +73,7 @@ export default function ConfigPage() {
           <p className="muted">Cargando…</p>
         </div>
       ) : (
-        <>
+        <div className="config-cols">
           <ScopeCard
             title="Base empresarial"
             hint="Compartida por toda la empresa. La conecta el superadmin."
@@ -92,7 +92,7 @@ export default function ConfigPage() {
             onChanged={load}
             setBanner={setBanner}
           />
-        </>
+        </div>
       )}
     </>
   );

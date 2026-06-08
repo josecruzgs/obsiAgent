@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { IconLogo } from "@/components/icons";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +14,8 @@ export default function LoginPage() {
     <div className="login-wrap">
       <div className="card login-card">
         <span className="logo logo-lg">
-          <IconLogo />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/logo.png" alt="obsiAgent" />
         </span>
         <h1 style={{ marginTop: 12 }}>obsiAgent</h1>
         <p className="subtitle" style={{ marginBottom: 24 }}>

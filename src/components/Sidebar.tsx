@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 import {
-  IconLogo,
   IconHome,
   IconUpload,
   IconNotes,
@@ -50,7 +49,8 @@ export default function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar-brand">
         <span className="logo">
-          <IconLogo />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/logo.png" alt="obsiAgent" />
         </span>
         <div className="sidebar-brand-text">
           <strong>obsiAgent</strong>

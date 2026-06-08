@@ -259,17 +259,19 @@ html[data-bg] .page-bg {
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
-/* ─── Logo (marca) ───────────────────────────────────────────────────── */
+/* ─── Logo (marca) — isotipo en /images/logo.png ─────────────────────── */
 .logo {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, var(--accent), #b9aaff);
-  box-shadow: 0 6px 18px rgba(108, 92, 231, 0.4);
-  color: #fff;
   flex-shrink: 0;
+}
+.logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 /* ─── Cascarón: sidebar + main ───────────────────────────────────────── */
@@ -762,10 +764,10 @@ h2 {
 
 /* ─── Ingesta: contenedor centrado + 2 columnas ──────────────────────── */
 .ingest {
-  max-width: 1080px;
-  margin: 0 auto;
+  width: 100%;
 }
-.ingest-cols {
+.ingest-cols,
+.config-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 18px;
@@ -778,7 +780,8 @@ h2 {
   margin-bottom: 18px;
 }
 @media (max-width: 860px) {
-  .ingest-cols {
+  .ingest-cols,
+  .config-cols {
     grid-template-columns: 1fr;
   }
 }
