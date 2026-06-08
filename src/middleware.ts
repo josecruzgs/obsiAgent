@@ -46,6 +46,8 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Corre en todo salvo assets estáticos de Next y el favicon.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Corre en todo salvo assets estáticos de Next, el favicon y los archivos
+  // públicos (/images, /glow). Sin esto, las imágenes se redirigían a /login
+  // cuando no hay sesión (p. ej. en la propia página de login).
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|images/|glow/).*)"],
 };
