@@ -415,13 +415,67 @@ html[data-bg] .page-bg {
   flex-direction: column;
   gap: 6px;
   padding-top: 10px;
+}
+/* Switch de tema (claro/oscuro) tipo píldora, centrado sobre el nombre. */
+.theme-switch {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+.theme-seg {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.theme-seg:hover {
+  color: var(--text);
+}
+.theme-seg.active {
+  background: var(--accent);
+  color: #fff;
+}
+/* Línea divisoria entre el switch y el bloque de usuario. */
+.sidebar-divider {
   border-top: 1px solid var(--border);
+  margin: 4px 0 2px;
 }
 .sidebar-user {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 11px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.sidebar-user:hover {
+  background: var(--panel-2);
+}
+.sidebar-user-caret {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+}
+.sidebar-user.open .sidebar-user-caret {
+  transform: rotate(180deg);
 }
 .avatar {
   width: 34px;
@@ -1318,8 +1372,12 @@ code {
   }
   .sidebar-foot {
     flex-direction: row;
+    align-items: center;
     border-top: none;
     padding-top: 0;
+  }
+  .sidebar-divider {
+    display: none;
   }
   .sidebar-user-text {
     display: none;

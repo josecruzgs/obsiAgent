@@ -16,8 +16,7 @@ export default function ThemeToggle() {
     setTheme(current);
   }, []);
 
-  function toggle() {
-    const next: Theme = theme === "dark" ? "light" : "dark";
+  function set(next: Theme) {
     setTheme(next);
     document.documentElement.dataset.theme = next;
     try {
@@ -28,14 +27,25 @@ export default function ThemeToggle() {
   }
 
   return (
-    <button
-      type="button"
-      className="icon-btn"
-      onClick={toggle}
-      aria-label={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-      title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
-    >
-      {theme === "dark" ? <IconSun /> : <IconMoon />}
-    </button>
+    <div className="theme-switch" role="group" aria-label="Tema claro u oscuro">
+      <button
+        type="button"
+        className={`theme-seg${theme === "light" ? " active" : ""}`}
+        onClick={() => set("light")}
+        aria-pressed={theme === "light"}
+        title="Modo claro"
+      >
+        <IconSun width={16} height={16} />
+      </button>
+      <button
+        type="button"
+        className={`theme-seg${theme === "dark" ? " active" : ""}`}
+        onClick={() => set("dark")}
+        aria-pressed={theme === "dark"}
+        title="Modo oscuro"
+      >
+        <IconMoon width={16} height={16} />
+      </button>
+    </div>
   );
 }

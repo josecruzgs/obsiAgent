@@ -30,6 +30,7 @@ interface Me {
 export default function Sidebar() {
   const pathname = usePathname();
   const [me, setMe] = useState<Me | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (pathname === "/login") return;
@@ -84,7 +85,14 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-foot">
-        <div className="sidebar-user">
+        <ThemeToggle />
+        <div className="sidebar-divider" />
+        <button
+          type="button"
+          className={`sidebar-user${menuOpen ? " open" : ""}`}
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-expanded={menuOpen}
+        >
           <span className="avatar">
             {(me?.user.name || me?.user.email || "?").charAt(0).toUpperCase()}
           </span>
@@ -92,12 +100,27 @@ export default function Sidebar() {
             <strong>{me?.user.name || me?.user.email || "—"}</strong>
             {me?.user.name && <span>{me.user.email}</span>}
           </div>
-          <ThemeToggle />
-        </div>
-        <a href="/api/auth/logout" className="side-link side-logout">
-          <IconLogout width={19} height={19} />
-          Salir
-        </a>
+          <svg
+            className="sidebar-user-caret"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+        {menuOpen && (
+          <a href="/api/auth/logout" className="side-link side-logout">
+            <IconLogout width={19} height={19} />
+            Salir
+          </a>
+        )}
       </div>
     </aside>
   );
