@@ -39,6 +39,32 @@ function decodeJwt(token: string): Record<string, unknown> {
   return JSON.parse(json);
 }
 
+/** POST con reintentos ante errores de red transitorios (ECONNRESET, etc.). */
+async function postForm(url: string, body: URLSearchParams, attempts = 3): Promise<Response> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 12000);
+      try {
+        return await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body,
+          signal: ctrl.signal,
+        });
+      } finally {
+        clearTimeout(t);
+      }
+    } catch (e) {
+      lastErr = e;
+      console.warn(`[auth] intento ${i + 1}/${attempts} falló:`, (e as Error)?.message);
+      await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 /** Intercambia el `code` por tokens y extrae la identidad del id_token. */
 export async function exchangeCodeForIdentity(
   code: string
@@ -51,11 +77,7 @@ export async function exchangeCodeForIdentity(
     code,
     scope: SCOPES,
   });
-  const res = await fetch(`${AUTHORITY}/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
+  const res = await postForm(`${AUTHORITY}/token`, body);
   if (!res.ok) {
     throw new Error(`OAuth token ${res.status}: ${await res.text()}`);
   }
