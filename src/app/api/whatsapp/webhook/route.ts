@@ -4,7 +4,7 @@
 // Configura en Evolution el webhook hacia esta URL con el evento MESSAGES_UPSERT.
 import { NextRequest, NextResponse } from "next/server";
 import { runAssistant } from "@/lib/agents/assistant";
-import { getBootstrapCompany, type User } from "@/lib/tenancy";
+import { getBootstrapCompany, getBootstrapOwner, type User } from "@/lib/tenancy";
 import {
   sendText,
   sendAudio,
@@ -163,9 +163,12 @@ async function handleQuery(
   text: string,
   replyWithAudio = false
 ): Promise<void> {
-  // WhatsApp consulta la base EMPRESARIAL de la empresa por defecto.
+  // WhatsApp busca como el "dueño" de la empresa: así el agente ve tanto la
+  // base EMPRESARIAL (compartida) como las notas PERSONALES del dueño, y la
+  // relevancia decide de cuál tomar la respuesta.
   const company = await getBootstrapCompany();
-  const companyUser: User = {
+  const owner = await getBootstrapOwner();
+  const companyUser: User = owner ?? {
     id: NO_USER,
     company_id: company.id,
     email: "",

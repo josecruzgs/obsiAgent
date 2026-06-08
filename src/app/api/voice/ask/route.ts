@@ -4,7 +4,7 @@
 // x-import-token = BULK_IMPORT_TOKEN). Responde de la base EMPRESARIAL.
 import { NextRequest, NextResponse } from "next/server";
 import { isImportAuthorized } from "@/lib/importAuth";
-import { getBootstrapCompany, type User } from "@/lib/tenancy";
+import { getBootstrapCompany, getBootstrapOwner, type User } from "@/lib/tenancy";
 import { runAssistant } from "@/lib/agents/assistant";
 
 export const runtime = "nodejs";
@@ -41,8 +41,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Busca como el "dueño": ve la base EMPRESARIAL + sus notas PERSONALES.
   const company = await getBootstrapCompany();
-  const companyUser: User = {
+  const owner = await getBootstrapOwner();
+  const companyUser: User = owner ?? {
     id: NO_USER,
     company_id: company.id,
     email: "",

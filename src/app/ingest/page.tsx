@@ -38,7 +38,12 @@ export default function IngestPage() {
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (d?.user?.role === "superadmin") setIsSuperadmin(true);
+        if (d?.user?.role === "superadmin") {
+          setIsSuperadmin(true);
+          // Por defecto, el superadmin ingiere a la base EMPRESARIAL (la que
+          // lee el agente). Puede cambiar el select a personal si lo desea.
+          setScope("company");
+        }
       })
       .catch(() => {});
   }, []);

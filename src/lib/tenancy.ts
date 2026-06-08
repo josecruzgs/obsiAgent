@@ -185,6 +185,22 @@ export async function getBootstrapCompany(): Promise<Company> {
   return any[0];
 }
 
+/** Usuario "dueño" de la empresa por defecto (superadmin) para flujos sin
+ *  sesión (WhatsApp/voz). Buscar como él permite que el agente vea tanto la
+ *  base EMPRESARIAL como sus notas PERSONALES. */
+export async function getBootstrapOwner(): Promise<User | null> {
+  const company = await getBootstrapCompany();
+  if (!company) return null;
+  const rows = await query<User>(
+    `select id, company_id, email, name, role, ms_oid from users
+     where company_id = $1
+     order by (role = 'superadmin') desc, created_at
+     limit 1`,
+    [company.id]
+  );
+  return rows[0] ?? null;
+}
+
 export async function getCompany(id: string): Promise<Company | null> {
   await ensureTenancy();
   return (
