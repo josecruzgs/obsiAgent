@@ -239,17 +239,17 @@ html[data-theme="dark"][data-bg="3"] body {
   background-image: linear-gradient(rgba(8, 8, 16, 0.62), rgba(8, 8, 16, 0.62)),
     url("/images/3.jpg");
 }
-/* Versión CLARA: {n}light.jpg con overlay claro. */
+/* Versión CLARA: {n}light.jpg con un overlay claro muy ligero (no lavar la foto). */
 html:not([data-theme="dark"])[data-bg="1"] body {
-  background-image: linear-gradient(rgba(243, 244, 250, 0.55), rgba(243, 244, 250, 0.55)),
+  background-image: linear-gradient(rgba(243, 244, 250, 0.18), rgba(243, 244, 250, 0.18)),
     url("/images/1light.jpg");
 }
 html:not([data-theme="dark"])[data-bg="2"] body {
-  background-image: linear-gradient(rgba(243, 244, 250, 0.55), rgba(243, 244, 250, 0.55)),
+  background-image: linear-gradient(rgba(243, 244, 250, 0.18), rgba(243, 244, 250, 0.18)),
     url("/images/2light.jpg");
 }
 html:not([data-theme="dark"])[data-bg="3"] body {
-  background-image: linear-gradient(rgba(243, 244, 250, 0.55), rgba(243, 244, 250, 0.55)),
+  background-image: linear-gradient(rgba(243, 244, 250, 0.18), rgba(243, 244, 250, 0.18)),
     url("/images/3light.jpg");
 }
 /* Con una imagen activa, ocultamos el efecto morado en movimiento. */
