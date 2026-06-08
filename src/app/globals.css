@@ -1249,10 +1249,11 @@ select option {
 
 /* ─── Login estilo landing (hero + carrusel de logos) ─────────────────── */
 .login-page {
-  max-width: 1140px;
+  width: 100%;
+  max-width: none;
   margin: 0 auto;
   min-height: 100vh;
-  padding: 22px 28px 36px;
+  padding: 22px clamp(24px, 6vw, 96px) 36px;
   display: flex;
   flex-direction: column;
 }
