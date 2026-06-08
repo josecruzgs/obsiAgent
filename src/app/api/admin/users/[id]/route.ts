@@ -10,6 +10,7 @@ import {
   deleteUser,
   setUserRole,
   setUserPhone,
+  setUserName,
   countSuperadmins,
 } from "@/lib/tenancy";
 
@@ -50,13 +51,14 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
 const patchSchema = z.object({
   role: z.enum(["superadmin", "member"]).optional(),
   phone: z.string().optional(), // "" borra el teléfono
+  name: z.string().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   try {
     const admin = await requireSuperadmin();
     const { id } = await params;
-    const { role, phone } = patchSchema.parse(await req.json());
+    const { role, phone, name } = patchSchema.parse(await req.json());
 
     const target = await getUserById(id);
     if (!target || target.company_id !== admin.company_id) {
@@ -78,6 +80,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
     if (phone !== undefined) {
       await setUserPhone(id, phone);
+    }
+    if (name !== undefined) {
+      await setUserName(id, name);
     }
     return NextResponse.json({ ok: true });
   } catch (err) {

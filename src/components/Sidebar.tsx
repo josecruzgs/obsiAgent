@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
@@ -31,6 +31,19 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [me, setMe] = useState<Me | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Cierra el menú del usuario al hacer clic fuera.
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDocClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [menuOpen]);
 
   useEffect(() => {
     if (pathname === "/login") return;
@@ -54,7 +67,7 @@ export default function Sidebar() {
           <img src="/images/logo.png" alt="obsiAgent" />
         </span>
         <div className="sidebar-brand-text">
-          <strong>obsiAgent</strong>
+          <strong>ObsiAgent</strong>
           {me?.company && <span>{me.company.name}</span>}
         </div>
       </div>
@@ -87,40 +100,45 @@ export default function Sidebar() {
       <div className="sidebar-foot">
         <ThemeToggle />
         <div className="sidebar-divider" />
-        <button
-          type="button"
-          className={`sidebar-user${menuOpen ? " open" : ""}`}
-          onClick={() => setMenuOpen((o) => !o)}
-          aria-expanded={menuOpen}
-        >
-          <span className="avatar">
-            {(me?.user.name || me?.user.email || "?").charAt(0).toUpperCase()}
-          </span>
-          <div className="sidebar-user-text">
-            <strong>{me?.user.name || me?.user.email || "—"}</strong>
-            {me?.user.name && <span>{me.user.email}</span>}
-          </div>
-          <svg
-            className="sidebar-user-caret"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
+        <div className="sidebar-user-wrap" ref={menuRef}>
+          {menuOpen && (
+            <div className="user-menu" role="menu">
+              <a href="/api/auth/logout" className="user-menu-item" role="menuitem">
+                <IconLogout width={18} height={18} />
+                Cerrar sesión
+              </a>
+            </div>
+          )}
+          <button
+            type="button"
+            className={`sidebar-user${menuOpen ? " open" : ""}`}
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
           >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
-        {menuOpen && (
-          <a href="/api/auth/logout" className="side-link side-logout">
-            <IconLogout width={19} height={19} />
-            Salir
-          </a>
-        )}
+            <span className="avatar">
+              {(me?.user.name || me?.user.email || "?").charAt(0).toUpperCase()}
+            </span>
+            <div className="sidebar-user-text">
+              <strong>{me?.user.name || me?.user.email || "—"}</strong>
+              {me?.user.name && <span>{me.user.email}</span>}
+            </div>
+            <svg
+              className="sidebar-user-caret"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+        </div>
       </div>
     </aside>
   );

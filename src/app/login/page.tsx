@@ -17,7 +17,7 @@ export default function LoginPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/logo.png" alt="obsiAgent" />
         </span>
-        <h1 style={{ marginTop: 12 }}>obsiAgent</h1>
+        <h1 style={{ marginTop: 12 }}>ObsiAgent</h1>
         <p className="subtitle" style={{ marginBottom: 24 }}>
           Inicia sesión para acceder a tu base de conocimiento.
         </p>

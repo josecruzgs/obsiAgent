@@ -11,8 +11,13 @@ const merriweather = Merriweather({
 });
 
 export const metadata: Metadata = {
-  title: "obsiAgent",
+  title: "ObsiAgent",
   description: "Plataforma de conocimiento sobre Obsidian con IA y WhatsApp",
+  icons: {
+    icon: "/images/logo.png",
+    shortcut: "/images/logo.png",
+    apple: "/images/logo.png",
+  },
 };
 
 // Aplica el tema guardado antes del primer pintado (evita parpadeo).

@@ -305,6 +305,11 @@ export async function setUserPhone(id: string, phone: string | null): Promise<vo
   await query(`update users set phone = $2 where id = $1`, [id, normalizePhone(phone)]);
 }
 
+/** Fija/actualiza el nombre de un usuario (null para borrar). */
+export async function setUserName(id: string, name: string | null): Promise<void> {
+  await query(`update users set name = $2 where id = $1`, [id, name?.trim() || null]);
+}
+
 export async function deleteUser(id: string): Promise<void> {
   await query(`delete from users where id = $1`, [id]);
 }

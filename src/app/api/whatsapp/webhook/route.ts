@@ -112,7 +112,11 @@ async function processMessage(msg: EvolutionMessage): Promise<void> {
   const phone = phoneJid.split("@")[0];
   const targets = [phoneJid]; // Evolution no envía a @lid; respondemos al teléfono.
 
-  if (!isAllowed(phone)) {
+  // Usuario registrado con este teléfono (en /admin), si existe.
+  const dbUser = await getUserByPhone(phone);
+
+  // Autorizado si está en el allowlist del .env O registrado en /admin.
+  if (!isAllowed(phone) && !dbUser) {
     console.log(`[whatsapp] número no autorizado: ${phone}`);
     void sendToFirst(
       targets,
@@ -153,15 +157,14 @@ async function processMessage(msg: EvolutionMessage): Promise<void> {
 
   // Acceso a la web sin credenciales: manda un magic link al usuario de este número.
   if (LOGIN_REQUEST.test(text.trim())) {
-    const user = await getUserByPhone(phone);
-    if (!user) {
+    if (!dbUser) {
       await sendToFirst(
         targets,
         "Tu número no está vinculado a un usuario. Pídele al administrador que lo registre en /admin."
       );
       return;
     }
-    const { token } = await signMagicToken(user.id);
+    const { token } = await signMagicToken(dbUser.id);
     await sendToFirst(
       targets,
       `🔓 Tu acceso directo (válido 10 min, un solo uso):\n${env.publicBaseUrl}/api/auth/magic?t=${token}`
@@ -178,7 +181,7 @@ async function processMessage(msg: EvolutionMessage): Promise<void> {
     return;
   }
 
-  await handleQuery(targets, phone, text, wasAudio).catch((e) =>
+  await handleQuery(targets, phone, text, dbUser, wasAudio).catch((e) =>
     console.error("[whatsapp] handleQuery error:", e)
   );
 }
@@ -200,22 +203,26 @@ async function handleQuery(
   targets: string[],
   phone: string,
   text: string,
+  dbUser: User | null,
   replyWithAudio = false
 ): Promise<void> {
-  // WhatsApp busca como el "dueño" de la empresa: así el agente ve tanto la
-  // base EMPRESARIAL (compartida) como las notas PERSONALES del dueño, y la
-  // relevancia decide de cuál tomar la respuesta.
-  const company = await getBootstrapCompany();
-  const owner = await getBootstrapOwner();
-  const companyUser: User = owner ?? {
-    id: NO_USER,
-    company_id: company.id,
-    email: "",
-    name: null,
-    role: "member",
-    ms_oid: null,
-    phone: null,
-  };
+  // Si el teléfono está registrado, el agente busca COMO ESE USUARIO (su base
+  // empresarial + sus notas personales). Si no (número solo en el allowlist del
+  // .env), cae al "dueño" de la empresa.
+  let companyUser: User | null = dbUser;
+  if (!companyUser) {
+    const company = await getBootstrapCompany();
+    companyUser =
+      (await getBootstrapOwner()) ?? {
+        id: NO_USER,
+        company_id: company.id,
+        email: "",
+        name: null,
+        role: "member",
+        ms_oid: null,
+        phone: null,
+      };
+  }
   // Agente: responde con RAG agéntico y puede crear notas si se le pide.
   // Se le pasa el historial reciente del teléfono para no perder el contexto.
   const history = getHistory(phone);

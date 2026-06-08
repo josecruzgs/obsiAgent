@@ -480,35 +480,52 @@ html[data-bg] .page-bg {
   gap: 6px;
   padding-top: 10px;
 }
-/* Switch de tema (claro/oscuro) tipo píldora, centrado sobre el nombre. */
-.theme-switch {
-  align-self: center;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 3px;
+/* Toggle de tema: un solo botón dual con un knob que se desliza (izq=claro,
+   der=oscuro), alineado a la izquierda. */
+.theme-toggle {
+  position: relative;
+  align-self: flex-start;
+  width: 64px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--panel-2);
-  border: 1px solid var(--border);
+  cursor: pointer;
+  flex-shrink: 0;
 }
-.theme-seg {
+.theme-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  transition: transform 0.22s ease;
+  z-index: 0;
+}
+.theme-toggle.dark .theme-toggle-knob {
+  transform: translateX(34px);
+}
+.theme-toggle-track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  z-index: 1;
+}
+.theme-toggle-track > span {
+  flex: 1;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
   color: var(--muted);
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: color 0.2s ease;
 }
-.theme-seg:hover {
-  color: var(--text);
+.theme-toggle.light .theme-toggle-track > span:first-child {
+  color: #fff;
 }
-.theme-seg.active {
-  background: var(--accent);
+.theme-toggle.dark .theme-toggle-track > span:last-child {
   color: #fff;
 }
 /* Línea divisoria entre el switch y el bloque de usuario. */
@@ -540,6 +557,38 @@ html[data-bg] .page-bg {
 }
 .sidebar-user.open .sidebar-user-caret {
   transform: rotate(180deg);
+}
+/* Menú emergente del usuario (arriba del nombre). */
+.sidebar-user-wrap {
+  position: relative;
+}
+.user-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  -webkit-backdrop-filter: var(--acrylic);
+  backdrop-filter: var(--acrylic);
+  z-index: 50;
+}
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+}
+.user-menu-item:hover {
+  background: var(--panel-2);
+  text-decoration: none;
 }
 .avatar {
   width: 34px;
@@ -969,6 +1018,12 @@ label {
   margin-bottom: 6px;
 }
 input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="number"],
+input[type="password"],
+input[type="search"],
+input[type="url"],
 input[type="file"],
 textarea {
   width: 100%;
@@ -982,6 +1037,12 @@ textarea {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="tel"]:focus,
+input[type="number"]:focus,
+input[type="password"]:focus,
+input[type="search"]:focus,
+input[type="url"]:focus,
 textarea:focus {
   outline: none;
   border-color: var(--accent);

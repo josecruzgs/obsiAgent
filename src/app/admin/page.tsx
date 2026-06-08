@@ -26,6 +26,9 @@ export default function AdminPage() {
   const [role, setRole] = useState<"member" | "superadmin">("member");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
 
   async function loadUsers() {
     const res = await fetch("/api/admin/users");
@@ -89,15 +92,24 @@ export default function AdminPage() {
     await loadUsers();
   }
 
-  async function savePhone(id: string, value: string) {
+  function startEdit(u: User) {
+    setEditingId(u.id);
+    setEditName(u.name ?? "");
+    setEditPhone(u.phone ?? "");
+    setError(null);
+  }
+
+  async function saveEdit(id: string) {
     const res = await fetch(`/api/admin/users/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: value }),
+      body: JSON.stringify({ name: editName, phone: editPhone }),
     });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
-      setError(d.error || "No se pudo guardar el teléfono.");
+      setError(d.error || "No se pudo guardar.");
+    } else {
+      setEditingId(null);
     }
     await loadUsers();
   }
@@ -191,58 +203,94 @@ export default function AdminPage() {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
-              <tr key={u.id}>
-                <td>{u.email}</td>
-                <td>{u.name || "—"}</td>
-                <td>
-                  <input
-                    key={`${u.id}-${u.phone ?? ""}`}
-                    type="tel"
-                    defaultValue={u.phone ?? ""}
-                    placeholder="52155…"
-                    onBlur={(e) => {
-                      const v = e.target.value.replace(/\D/g, "");
-                      if (v !== (u.phone ?? "")) savePhone(u.id, e.target.value);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                    }}
-                    style={{ width: 130 }}
-                  />
-                </td>
-                <td>
-                  <select
-                    value={u.role}
-                    onChange={(e) =>
-                      changeRole(u.id, e.target.value as "member" | "superadmin")
-                    }
-                    disabled={u.id === me?.user.id}
-                  >
-                    <option value="member">Miembro</option>
-                    <option value="superadmin">Superadmin</option>
-                  </select>
-                </td>
-                <td>
-                  {u.ms_oid ? (
-                    <span className="success">activo</span>
-                  ) : (
-                    <span className="muted">sin primer login</span>
-                  )}
-                </td>
-                <td style={{ textAlign: "right" }}>
-                  {u.id !== me?.user.id && (
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => removeUser(u.id, u.email)}
+            {users.map((u) => {
+              const editing = editingId === u.id;
+              return (
+                <tr key={u.id}>
+                  <td>{u.email}</td>
+                  <td>
+                    {editing ? (
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder="Nombre"
+                        style={{ width: 150 }}
+                      />
+                    ) : (
+                      u.name || "—"
+                    )}
+                  </td>
+                  <td>
+                    {editing ? (
+                      <input
+                        type="tel"
+                        value={editPhone}
+                        onChange={(e) => setEditPhone(e.target.value)}
+                        placeholder="52155…"
+                        style={{ width: 150 }}
+                      />
+                    ) : (
+                      u.phone || "—"
+                    )}
+                  </td>
+                  <td>
+                    <select
+                      value={u.role}
+                      onChange={(e) =>
+                        changeRole(u.id, e.target.value as "member" | "superadmin")
+                      }
+                      disabled={u.id === me?.user.id}
                     >
-                      Eliminar
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+                      <option value="member">Miembro</option>
+                      <option value="superadmin">Superadmin</option>
+                    </select>
+                  </td>
+                  <td>
+                    {u.ms_oid ? (
+                      <span className="success">activo</span>
+                    ) : (
+                      <span className="muted">sin primer login</span>
+                    )}
+                  </td>
+                  <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                    {editing ? (
+                      <>
+                        <button type="button" onClick={() => saveEdit(u.id)}>
+                          Guardar
+                        </button>{" "}
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => setEditingId(null)}
+                        >
+                          Cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => startEdit(u)}
+                        >
+                          Editar
+                        </button>{" "}
+                        {u.id !== me?.user.id && (
+                          <button
+                            type="button"
+                            className="secondary"
+                            onClick={() => removeUser(u.id, u.email)}
+                          >
+                            Eliminar
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
