@@ -420,6 +420,15 @@ html[data-bg] .page-bg {
   backdrop-filter: var(--acrylic);
   z-index: 30;
 }
+/* En escritorio los contenedores no generan caja (layout idéntico al anterior);
+   en móvil (media query) se vuelven hamburguesa + desplegable. */
+.sidebar-head,
+.sidebar-collapse {
+  display: contents;
+}
+.sidebar-burger {
+  display: none;
+}
 .sidebar-brand {
   display: flex;
   align-items: center;
@@ -1480,40 +1489,79 @@ code {
   .app.no-rail {
     grid-template-columns: 1fr;
   }
-  /* El sidebar pasa a barra horizontal arriba; la navegación hace scroll-x. */
+  /* Sidebar como barra superior con menú hamburguesa desplegable. */
   .sidebar {
     position: sticky;
+    top: 0;
+    z-index: 40;
     height: auto;
-    flex-direction: row;
-    align-items: center;
-    gap: 12px;
+    flex-direction: column;
+    gap: 0;
     padding: 10px 14px;
     border-right: none;
     border-bottom: 1px solid var(--border);
-    overflow-x: auto;
+    overflow: visible;
+  }
+  .sidebar-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
   .sidebar-brand {
     padding: 0;
   }
-  .sidebar-nav {
-    flex-direction: row;
-    gap: 4px;
-    flex: 1;
+  .sidebar-burger {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel-2);
+    color: var(--text);
+    cursor: pointer;
+    padding: 0;
   }
-  .side-link {
-    white-space: nowrap;
+  .sidebar-collapse {
+    display: none;
+  }
+  .sidebar.open .sidebar-collapse {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 10px;
+  }
+  .sidebar-nav {
+    flex-direction: column;
+    gap: 3px;
+    flex: none;
   }
   .sidebar-foot {
-    flex-direction: row;
-    align-items: center;
-    border-top: none;
-    padding-top: 0;
-  }
-  .sidebar-divider {
-    display: none;
+    flex-direction: column;
+    border-top: 1px solid var(--border);
+    margin-top: 6px;
+    padding-top: 10px;
   }
   .sidebar-user-text {
+    display: block;
+  }
+
+  /* Home en móvil: ocultar la constelación y enfatizar el botón de voz. */
+  .home-hero .agents-stage {
     display: none;
+  }
+  .home-hero {
+    padding: 4px 0 0;
+  }
+  .home-hero-actions {
+    margin-top: 0;
+  }
+  .home-hero-actions .voice-call-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 16px 18px;
+    font-size: 16px;
+    margin: 4px 0 8px;
   }
   .topbar {
     padding: 12px 16px;

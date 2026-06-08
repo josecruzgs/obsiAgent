@@ -30,7 +30,13 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [me, setMe] = useState<Me | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Cierra el menú móvil al navegar.
+  useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
 
   // Cierra el menú del usuario al hacer clic fuera.
   useEffect(() => {
@@ -59,18 +65,43 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-brand">
-        <span className="logo">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo.png" alt="obsiAgent" />
-        </span>
-        <div className="sidebar-brand-text">
-          <strong>ObsiAgent</strong>
-          {me?.company && <span>{me.company.name}</span>}
+    <aside className={`sidebar${navOpen ? " open" : ""}`}>
+      <div className="sidebar-head">
+        <div className="sidebar-brand">
+          <span className="logo">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/logo.png" alt="obsiAgent" />
+          </span>
+          <div className="sidebar-brand-text">
+            <strong>ObsiAgent</strong>
+            {me?.company && <span>{me.company.name}</span>}
+          </div>
         </div>
+        <button
+          type="button"
+          className="sidebar-burger"
+          onClick={() => setNavOpen((o) => !o)}
+          aria-label={navOpen ? "Cerrar menú" : "Abrir menú"}
+          aria-expanded={navOpen}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            {navOpen ? (
+              <>
+                <line x1="6" y1="6" x2="18" y2="18" />
+                <line x1="6" y1="18" x2="18" y2="6" />
+              </>
+            ) : (
+              <>
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </>
+            )}
+          </svg>
+        </button>
       </div>
 
+      <div className="sidebar-collapse">
       <nav className="sidebar-nav">
         {items.map((it) => {
           const Icon = it.icon;
@@ -136,6 +167,7 @@ export default function Sidebar() {
             </svg>
           </button>
         </div>
+      </div>
       </div>
     </aside>
   );
