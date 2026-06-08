@@ -14,6 +14,10 @@ const PUBLIC_PREFIXES = [
   "/api/ingest-transcript", // Power Automate (Teams), protegido por token
   "/api/onedrive/sync", // cron (token) o UI (sesión); el route valida ambos
   "/api/teams/sync", // cron (token) o UI (sesión); el route valida ambos
+  "/api/status", // status por cliente: cron (token) o superadmin; el route valida
+  "/api/curator", // curador del grafo: cron (token) o superadmin; el route valida
+  "/api/router", // enrutador: cron (token) o superadmin; el route valida
+  "/api/voice", // agente de voz (Retell): protegido por token en el route
 ];
 
 function isPublic(pathname: string): boolean {
