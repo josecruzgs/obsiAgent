@@ -216,6 +216,7 @@ export async function resolveSharePointDrive(
 export interface DriveFile {
   id: string;
   name: string;
+  lastModified?: string; // lastModifiedDateTime (para detectar cambios y re-ingerir)
 }
 
 /**
@@ -233,21 +234,27 @@ export async function listFolderFiles(
   const base = folder
     ? `${GRAPH}${driveBase}/root:/${encPath(folder)}:/children`
     : `${GRAPH}${driveBase}/root/children`;
-  let url = `${base}?$select=id,name,folder,file&$top=200`;
+  let url = `${base}?$select=id,name,folder,file,lastModifiedDateTime&$top=200`;
   const out: DriveFile[] = [];
   while (url) {
     const res = await graph(accessToken, url);
     if (res.status === 404) return out;
     if (!res.ok) throw new Error(`Graph list ${res.status}: ${await res.text()}`);
     const j = (await res.json()) as {
-      value?: Array<{ id: string; name: string; folder?: unknown }>;
+      value?: Array<{
+        id: string;
+        name: string;
+        folder?: unknown;
+        lastModifiedDateTime?: string;
+      }>;
       "@odata.nextLink"?: string;
     };
     for (const it of j.value ?? []) {
       if (it.folder) continue; // subcarpetas (procesados/fallidos) se ignoran
       const dot = it.name.lastIndexOf(".");
       const ext = dot >= 0 ? it.name.slice(dot).toLowerCase() : "";
-      if (SUPPORTED.includes(ext)) out.push({ id: it.id, name: it.name });
+      if (SUPPORTED.includes(ext))
+        out.push({ id: it.id, name: it.name, lastModified: it.lastModifiedDateTime });
     }
     url = j["@odata.nextLink"] ?? "";
   }

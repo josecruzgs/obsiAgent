@@ -66,13 +66,16 @@ async function ingestFolder(token: string, opts: IngestOpts): Promise<SyncResult
     failDir = await ensureFolder(token, folder, "fallidos", driveBase);
   }
 
-  const seen = new Set(
-    (
-      await query<{ external_id: string }>(
-        `select external_id from notes where external_id is not null`
-      )
-    ).map((r) => r.external_id)
-  );
+  // Mapa external_id -> { id de nota, revisión guardada } para detectar cambios:
+  // si la fecha de modificación del archivo cambió, se re-ingiere en su lugar.
+  const byExtId = new Map<string, { id: string; rev: string | null }>();
+  for (const r of await query<{
+    id: string;
+    external_id: string;
+    source_rev: string | null;
+  }>(`select id, external_id, source_rev from notes where external_id is not null`)) {
+    byExtId.set(r.external_id, { id: r.id, rev: r.source_rev });
+  }
 
   const ctx = await loadIngestContext(scope);
   const procesados: SyncResult["detalle"]["procesados"] = [];
@@ -81,8 +84,11 @@ async function ingestFolder(token: string, opts: IngestOpts): Promise<SyncResult
   for (const f of files) {
     try {
       const extId = extIdPrefix + f.name;
-      if (seen.has(extId)) {
-        // Ya ingerido: en OneDrive se aparta el original; en SharePoint se ignora.
+      const rev = f.lastModified ?? null;
+      const existing = byExtId.get(extId);
+
+      // Ya ingerido y sin cambios desde entonces: no reprocesar.
+      if (existing && (!rev || existing.rev === rev)) {
         if (moveProcessed) await moveItem(token, f.id, procDir, driveBase).catch(() => {});
         continue;
       }
@@ -92,13 +98,20 @@ async function ingestFolder(token: string, opts: IngestOpts): Promise<SyncResult
       if (!text) throw new Error("Texto vacío tras la extracción");
 
       const hint = f.name.replace(/\.[^.]+$/, "");
-      const r = await ingestText(text, hint, ctx, {
-        source: `${sourceLabel}:${folder}/${f.name}`,
-      });
-      await query(`update notes set external_id = $1 where id = $2`, [extId, r.id]).catch(
-        (e) => console.error("[sync] external_id:", e)
+      // Si ya existía -> actualiza esa misma nota (mismo nodo); si no, crea una nueva.
+      const r = await ingestText(
+        text,
+        hint,
+        ctx,
+        { source: `${sourceLabel}:${folder}/${f.name}` },
+        existing?.id
       );
-      seen.add(extId);
+      await query(`update notes set external_id = $1, source_rev = $2 where id = $3`, [
+        extId,
+        rev,
+        r.id,
+      ]).catch((e) => console.error("[sync] external_id:", e));
+      byExtId.set(extId, { id: r.id, rev });
       if (moveProcessed) await moveItem(token, f.id, procDir, driveBase);
       procesados.push({ archivo: f.name, id: r.id, titulo: r.title });
     } catch (err) {

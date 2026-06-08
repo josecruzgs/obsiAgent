@@ -40,15 +40,27 @@ export interface IngestResult {
   links: string[];
 }
 
-/** Digiere un texto ya extraído y lo guarda como nota (vault + DB) en el ámbito de ctx. */
+/**
+ * Digiere un texto ya extraído y lo guarda como nota (vault + DB) en el ámbito de
+ * ctx. Si `existingId` se indica, ACTUALIZA esa nota en su lugar (mismo nodo,
+ * mismos enlaces entrantes) en vez de crear una nueva: re-digiere, reescribe el
+ * .md, re-embebe y reconstruye sus enlaces. Conserva la fecha `created`.
+ */
 export async function ingestText(
   text: string,
   hint: string | undefined,
   ctx: IngestContext,
-  extraFrontmatter: Partial<NoteFrontmatter> = {}
+  extraFrontmatter: Partial<NoteFrontmatter> = {},
+  existingId?: string
 ): Promise<IngestResult> {
   const digest = await digestDocument(text, ctx.titles, hint);
-  const id = uniqueId(slugify(digest.title), ctx.takenIds);
+
+  // Actualización en su lugar: reusa el id existente (preserva el nodo y sus
+  // enlaces entrantes). Nueva: genera un id único a partir del título.
+  const id = existingId ?? uniqueId(slugify(digest.title), ctx.takenIds);
+  const prev = existingId ? await readNote(existingId, ctx.subdir) : null;
+  const created =
+    (prev?.frontmatter.created as string | undefined) ?? new Date().toISOString();
 
   await writeNote({
     id,
@@ -57,7 +69,8 @@ export async function ingestText(
       title: digest.title,
       summary: digest.summary,
       tags: digest.tags,
-      created: new Date().toISOString(),
+      created,
+      ...(existingId ? { updated: new Date().toISOString() } : {}),
       ...extraFrontmatter,
     },
     body: text,
@@ -67,7 +80,7 @@ export async function ingestText(
   const note = await readNote(id, ctx.subdir);
   if (note) await indexNote(note, ctx.scope);
 
-  ctx.titles.push(digest.title);
+  if (!ctx.titles.includes(digest.title)) ctx.titles.push(digest.title);
   return {
     id,
     title: digest.title,

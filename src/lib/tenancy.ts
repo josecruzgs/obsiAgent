@@ -70,6 +70,9 @@ async function run(): Promise<void> {
     `create unique index if not exists notes_external_id_uidx
        on notes (external_id) where external_id is not null`
   );
+  // Revisión de la fuente (p. ej. lastModifiedDateTime del archivo): si cambia,
+  // se re-ingiere la nota en su lugar (sin crear otro nodo).
+  await query(`alter table notes add column if not exists source_rev text`);
 
   // Conexiones a OneDrive por ámbito: empresarial (owner null) o personal (por usuario).
   await query(`create table if not exists onedrive_connections (
