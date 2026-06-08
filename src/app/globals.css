@@ -1357,13 +1357,22 @@ code {
 .scene-core::before {
   width: 28px;
   height: 28px;
-  animation: orbitSpin 14s linear infinite;
+  animation: ringSpin 14s linear infinite;
 }
 .scene-core::after {
   width: 42px;
   height: 42px;
   opacity: 0.5;
-  animation: orbitSpin 22s linear infinite reverse;
+  animation: ringSpin 22s linear infinite reverse;
+}
+/* Gira manteniendo el centrado (incluye el translate en el keyframe). */
+@keyframes ringSpin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
 }
 .scene-label {
   position: absolute;
