@@ -12,6 +12,10 @@ const CLIENT_LOGOS = [
   "/images/client-6.svg",
 ];
 
+// Un "set" ancho (repetido) y duplicado, para un marquee sin huecos a -50%.
+const MARQUEE_SET = [...CLIENT_LOGOS, ...CLIENT_LOGOS, ...CLIENT_LOGOS];
+const MARQUEE = [...MARQUEE_SET, ...MARQUEE_SET];
+
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
@@ -73,17 +77,17 @@ export default function LoginPage() {
       </section>
 
       <section className="login-marquee">
-        <p className="login-marquee-title">
-          Con la confianza de equipos de inversión e investigación de primer nivel
-        </p>
         <div className="marquee">
           <div className="marquee-track">
-            {[...CLIENT_LOGOS, ...CLIENT_LOGOS].map((src, i) => (
+            {MARQUEE.map((src, i) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img key={i} src={src} alt="" className="marquee-logo" />
             ))}
           </div>
         </div>
+        <p className="login-marquee-title">
+          Con la confianza de equipos de inversión e investigación de primer nivel
+        </p>
       </section>
     </div>
   );
