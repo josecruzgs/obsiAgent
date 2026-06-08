@@ -23,6 +23,7 @@
     "react-dom": "^19.0.0",
     "react-force-graph-2d": "^1.27.0",
     "react-markdown": "^10.1.0",
+    "retell-client-js-sdk": "^2.0.8",
     "zod": "^3.24.1"
   },
   "devDependencies": {

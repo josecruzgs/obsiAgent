@@ -1371,3 +1371,31 @@ code {
     grid-template-columns: 1fr;
   }
 }
+
+/* ─── Botón de llamada de voz (Retell web call) ───────────────────────── */
+.voice-call-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 16px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #9b8cff);
+  box-shadow: 0 6px 16px rgba(108, 92, 231, 0.32);
+  transition: box-shadow 0.2s ease, transform 0.1s ease;
+}
+.voice-call-btn:hover {
+  transform: translateY(-1px);
+}
+.voice-call-btn.live {
+  background: var(--danger);
+  box-shadow: none;
+}
+.voice-call-btn.talking {
+  animation: agentBlink 0.9s ease-in-out infinite;
+}

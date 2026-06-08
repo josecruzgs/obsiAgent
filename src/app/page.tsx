@@ -2,6 +2,7 @@ import Link from "next/link";
 import { query } from "@/lib/db";
 import { IconBook, IconLink, IconUpload, IconNotes, IconGraph } from "@/components/icons";
 import AgentsBoard from "@/components/AgentsBoard";
+import VoiceCallButton from "@/components/VoiceCallButton";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -111,6 +112,7 @@ export default async function Home() {
       <p className="subtitle" style={{ marginTop: 2 }}>
         El orquestador coordina a los agentes. Se iluminan cuando trabajan.
       </p>
+      <VoiceCallButton />
       <AgentsBoard />
     </>
   );

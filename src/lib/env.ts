@@ -84,6 +84,14 @@ export const env = {
     return optional("ANTHROPIC_AGENT_MODEL", this.anthropicModel);
   },
 
+  // Retell AI: agente de voz (llamada web / teléfono). apiKey + id del agente.
+  get retell() {
+    return {
+      apiKey: optional("RETELL_API_KEY"),
+      agentId: optional("RETELL_AGENT_ID"),
+    };
+  },
+
   // OpenAI: SOLO para audio (Whisper STT + TTS) en WhatsApp. Claude no hace audio.
   get openai() {
     return {
