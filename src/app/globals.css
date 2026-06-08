@@ -259,6 +259,19 @@ html[data-bg] .page-bg {
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
+/* ─── Grafo (/graph): escena "constelación" detrás del canvas ─────────── */
+.graph-scene {
+  border: 1px solid rgba(150, 140, 235, 0.2);
+  border-radius: 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(139, 123, 255, 0.18), transparent 60%),
+    linear-gradient(rgba(160, 150, 235, 0.05) 1px, transparent 1px) 0 0 / 30px 30px,
+    linear-gradient(90deg, rgba(160, 150, 235, 0.05) 1px, transparent 1px) 0 0 /
+      30px 30px,
+    #0a0816;
+}
+
 /* ─── Logo (marca) — isotipo en /images/logo.png ─────────────────────── */
 .logo {
   width: 36px;
