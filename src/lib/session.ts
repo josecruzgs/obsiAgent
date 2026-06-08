@@ -87,6 +87,67 @@ export async function verifySession(
   }
 }
 
+// ─── Magic link (acceso por WhatsApp, sin credenciales) ──────────────────
+const MAGIC_TTL_SECONDS = 10 * 60; // 10 min
+
+export interface MagicPayload {
+  uid: string;
+  jti: string; // id único del token (para invalidarlo tras un solo uso)
+  p: "magic"; // propósito (evita confundirlo con un token de sesión)
+  exp: number;
+}
+
+function randomId(): string {
+  const b = new Uint8Array(16);
+  crypto.getRandomValues(b);
+  return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+/** Firma un token de acceso de un solo uso para un usuario. */
+export async function signMagicToken(uid: string): Promise<{ token: string; jti: string }> {
+  const payload: MagicPayload = {
+    uid,
+    jti: randomId(),
+    p: "magic",
+    exp: Math.floor(Date.now() / 1000) + MAGIC_TTL_SECONDS,
+  };
+  const body = b64urlEncode(new TextEncoder().encode(JSON.stringify(payload)));
+  const sig = await crypto.subtle.sign(
+    "HMAC",
+    await hmacKey(),
+    buf(new TextEncoder().encode(body))
+  );
+  return { token: `${body}.${b64urlEncode(new Uint8Array(sig))}`, jti: payload.jti };
+}
+
+/** Verifica el token de magic link; devuelve el payload o null si inválido/expirado. */
+export async function verifyMagicToken(
+  token: string | undefined
+): Promise<MagicPayload | null> {
+  if (!token) return null;
+  const dot = token.indexOf(".");
+  if (dot < 0) return null;
+  const body = token.slice(0, dot);
+  const sig = token.slice(dot + 1);
+  try {
+    const ok = await crypto.subtle.verify(
+      "HMAC",
+      await hmacKey(),
+      buf(b64urlDecode(sig)),
+      buf(new TextEncoder().encode(body))
+    );
+    if (!ok) return null;
+    const payload = JSON.parse(
+      new TextDecoder().decode(b64urlDecode(body))
+    ) as MagicPayload;
+    if (payload.p !== "magic") return null;
+    if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
 /** `Secure` solo cuando la app corre en https (en http://localhost debe ir
  *  sin Secure, o el navegador descarta la cookie y el login falla). */
 export function cookieSecure(): boolean {

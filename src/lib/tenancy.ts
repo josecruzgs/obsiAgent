@@ -18,6 +18,7 @@ export interface User {
   name: string | null;
   role: Role;
   ms_oid: string | null; // object id de Microsoft (se rellena al primer login)
+  phone: string | null; // teléfono de WhatsApp (para magic link)
 }
 
 let _ready: Promise<void> | null = null;
@@ -44,6 +45,12 @@ async function run(): Promise<void> {
     ms_oid     text unique,
     created_at timestamptz default now()
   )`);
+
+  // Teléfono de WhatsApp por usuario (para el magic link de acceso).
+  await query(`alter table users add column if not exists phone text`);
+  await query(
+    `create unique index if not exists users_phone_uidx on users (phone) where phone is not null`
+  );
 
   // Scope de las notas: a qué empresa pertenecen y, si es personal, de quién.
   await query(
@@ -192,7 +199,7 @@ export async function getBootstrapOwner(): Promise<User | null> {
   const company = await getBootstrapCompany();
   if (!company) return null;
   const rows = await query<User>(
-    `select id, company_id, email, name, role, ms_oid from users
+    `select id, company_id, email, name, role, ms_oid, phone from users
      where company_id = $1
      order by (role = 'superadmin') desc, created_at
      limit 1`,
@@ -214,7 +221,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   return (
     (
       await query<User>(
-        `select id, company_id, email, name, role, ms_oid from users where email = $1`,
+        `select id, company_id, email, name, role, ms_oid, phone from users where email = $1`,
         [email.toLowerCase()]
       )
     )[0] ?? null
@@ -226,7 +233,7 @@ export async function getUserById(id: string): Promise<User | null> {
   return (
     (
       await query<User>(
-        `select id, company_id, email, name, role, ms_oid from users where id = $1`,
+        `select id, company_id, email, name, role, ms_oid, phone from users where id = $1`,
         [id]
       )
     )[0] ?? null
@@ -248,7 +255,7 @@ export async function linkMicrosoftIdentity(
 export async function listUsers(companyId: string): Promise<User[]> {
   await ensureTenancy();
   return query<User>(
-    `select id, company_id, email, name, role, ms_oid from users
+    `select id, company_id, email, name, role, ms_oid, phone from users
      where company_id = $1 order by created_at`,
     [companyId]
   );
@@ -258,16 +265,44 @@ export async function createUser(
   companyId: string,
   email: string,
   name: string | undefined,
-  role: Role
+  role: Role,
+  phone?: string
 ): Promise<User> {
   await ensureTenancy();
   const rows = await query<User>(
-    `insert into users (company_id, email, name, role)
-     values ($1, $2, $3, $4)
-     returning id, company_id, email, name, role, ms_oid`,
-    [companyId, email.trim().toLowerCase(), name?.trim() || null, role]
+    `insert into users (company_id, email, name, role, phone)
+     values ($1, $2, $3, $4, $5)
+     returning id, company_id, email, name, role, ms_oid, phone`,
+    [companyId, email.trim().toLowerCase(), name?.trim() || null, role, normalizePhone(phone)]
   );
   return rows[0];
+}
+
+/** Normaliza a solo dígitos (o null si vacío). */
+export function normalizePhone(phone?: string | null): string | null {
+  const d = (phone ?? "").replace(/\D/g, "");
+  return d || null;
+}
+
+/** Busca un usuario por teléfono (coincidencia por sufijo, tolerante a lada). */
+export async function getUserByPhone(phone: string): Promise<User | null> {
+  await ensureTenancy();
+  const d = normalizePhone(phone);
+  if (!d) return null;
+  // Coincidencia flexible: el guardado puede traer/omitir el código de país.
+  const rows = await query<User>(
+    `select id, company_id, email, name, role, ms_oid, phone from users
+     where phone is not null
+       and (phone = $1 or right(phone, 10) = right($1, 10))
+     limit 1`,
+    [d]
+  );
+  return rows[0] ?? null;
+}
+
+/** Fija/actualiza el teléfono de un usuario (solo dígitos; null para borrar). */
+export async function setUserPhone(id: string, phone: string | null): Promise<void> {
+  await query(`update users set phone = $2 where id = $1`, [id, normalizePhone(phone)]);
 }
 
 export async function deleteUser(id: string): Promise<void> {

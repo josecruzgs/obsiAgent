@@ -4,7 +4,13 @@
 // Configura en Evolution el webhook hacia esta URL con el evento MESSAGES_UPSERT.
 import { NextRequest, NextResponse } from "next/server";
 import { runAssistant } from "@/lib/agents/assistant";
-import { getBootstrapCompany, getBootstrapOwner, type User } from "@/lib/tenancy";
+import {
+  getBootstrapCompany,
+  getBootstrapOwner,
+  getUserByPhone,
+  type User,
+} from "@/lib/tenancy";
+import { signMagicToken } from "@/lib/session";
 import {
   sendText,
   sendAudio,
@@ -22,6 +28,9 @@ const CALL_REQUEST = /(ll[aá]mame|ll[aá]mar|llamada de voz|hablar por voz|quie
 
 // Reinicia el hilo de conversación (memoria de corto plazo).
 const RESET_REQUEST = /^(reiniciar|nueva conversaci[oó]n|olvida(?: todo)?|reset)\.?$/i;
+
+// Petición de acceso a la web sin credenciales (magic link).
+const LOGIN_REQUEST = /^(entrar|acceso|acceder|ingresar|login|inicia(?:r)? sesi[oó]n)\.?$/i;
 
 // uuid imposible: hace que el filtro "personal" no devuelva nada -> solo empresarial.
 const NO_USER = "00000000-0000-0000-0000-000000000000";
@@ -142,6 +151,24 @@ async function processMessage(msg: EvolutionMessage): Promise<void> {
     return;
   }
 
+  // Acceso a la web sin credenciales: manda un magic link al usuario de este número.
+  if (LOGIN_REQUEST.test(text.trim())) {
+    const user = await getUserByPhone(phone);
+    if (!user) {
+      await sendToFirst(
+        targets,
+        "Tu número no está vinculado a un usuario. Pídele al administrador que lo registre en /admin."
+      );
+      return;
+    }
+    const { token } = await signMagicToken(user.id);
+    await sendToFirst(
+      targets,
+      `🔓 Tu acceso directo (válido 10 min, un solo uso):\n${env.publicBaseUrl}/api/auth/magic?t=${token}`
+    );
+    return;
+  }
+
   // Si pide hablar por LLAMADA de voz, mandamos el enlace a la web call.
   if (CALL_REQUEST.test(text)) {
     await sendToFirst(
@@ -187,6 +214,7 @@ async function handleQuery(
     name: null,
     role: "member",
     ms_oid: null,
+    phone: null,
   };
   // Agente: responde con RAG agéntico y puede crear notas si se le pide.
   // Se le pasa el historial reciente del teléfono para no perder el contexto.

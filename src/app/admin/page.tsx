@@ -8,6 +8,7 @@ interface User {
   name: string | null;
   role: "superadmin" | "member";
   ms_oid: string | null;
+  phone: string | null;
 }
 
 interface Me {
@@ -21,6 +22,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [role, setRole] = useState<"member" | "superadmin">("member");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +54,12 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name: name || undefined, role }),
+        body: JSON.stringify({
+          email,
+          name: name || undefined,
+          role,
+          phone: phone || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -60,6 +67,7 @@ export default function AdminPage() {
       } else {
         setEmail("");
         setName("");
+        setPhone("");
         setRole("member");
         await loadUsers();
       }
@@ -77,6 +85,19 @@ export default function AdminPage() {
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
       setError(d.error || "No se pudo cambiar el rol.");
+    }
+    await loadUsers();
+  }
+
+  async function savePhone(id: string, value: string) {
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: value }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error || "No se pudo guardar el teléfono.");
     }
     await loadUsers();
   }
@@ -134,7 +155,14 @@ export default function AdminPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Nombre (opcional)"
-            style={{ flex: "1 1 160px" }}
+            style={{ flex: "1 1 140px" }}
+          />
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="WhatsApp (52155…)"
+            style={{ flex: "1 1 150px" }}
           />
           <select
             value={role}
@@ -156,6 +184,7 @@ export default function AdminPage() {
             <tr>
               <th>Email</th>
               <th>Nombre</th>
+              <th>WhatsApp</th>
               <th>Rol</th>
               <th>Estado</th>
               <th></th>
@@ -166,6 +195,22 @@ export default function AdminPage() {
               <tr key={u.id}>
                 <td>{u.email}</td>
                 <td>{u.name || "—"}</td>
+                <td>
+                  <input
+                    key={`${u.id}-${u.phone ?? ""}`}
+                    type="tel"
+                    defaultValue={u.phone ?? ""}
+                    placeholder="52155…"
+                    onBlur={(e) => {
+                      const v = e.target.value.replace(/\D/g, "");
+                      if (v !== (u.phone ?? "")) savePhone(u.id, e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                    }}
+                    style={{ width: 130 }}
+                  />
+                </td>
                 <td>
                   <select
                     value={u.role}

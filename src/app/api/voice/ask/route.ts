@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
     name: null,
     role: "member",
     ms_oid: null,
+    phone: null,
   };
 
   try {

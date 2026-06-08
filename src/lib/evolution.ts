@@ -54,7 +54,9 @@ export async function sendText(number: string, text: string): Promise<void> {
       "Content-Type": "application/json",
       apikey: apiKey,
     },
-    body: JSON.stringify({ number, text }),
+    // linkPreview:false evita que WhatsApp pre-cargue las URLs (importante para el
+    // magic link de un solo uso: una vista previa lo consumiría antes de abrirlo).
+    body: JSON.stringify({ number, text, linkPreview: false }),
   });
 
   if (!res.ok) {

@@ -25,6 +25,7 @@ const createSchema = z.object({
   email: z.string().email("Email inválido"),
   name: z.string().trim().optional(),
   role: z.enum(["superadmin", "member"]).default("member"),
+  phone: z.string().trim().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -35,13 +36,20 @@ export async function POST(req: NextRequest) {
       admin.company_id,
       body.email,
       body.name,
-      body.role
+      body.role,
+      body.phone
     );
     return NextResponse.json({ ok: true, user });
   } catch (err) {
     const a = authErrorResponse(err);
     if (a) return a;
     const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("users_phone_uidx")) {
+      return NextResponse.json(
+        { ok: false, error: "Ese teléfono ya está asignado a otro usuario." },
+        { status: 409 }
+      );
+    }
     if (msg.includes("users_email_key") || msg.toLowerCase().includes("duplicate")) {
       return NextResponse.json(
         { ok: false, error: "Ese email ya está registrado." },
