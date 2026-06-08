@@ -533,6 +533,11 @@ html[data-bg] .page-bg {
   border-top: 1px solid var(--border);
   margin: 4px 0 2px;
 }
+/* Pie de la barra derecha: empuja el toggle de tema al fondo. */
+.rail-foot {
+  margin-top: auto;
+  padding-top: 10px;
+}
 .sidebar-user {
   display: flex;
   align-items: center;
@@ -543,6 +548,7 @@ html[data-bg] .page-bg {
   background: transparent;
   border-radius: 11px;
   text-align: left;
+  color: var(--text);
   cursor: pointer;
   transition: background 0.15s ease;
 }

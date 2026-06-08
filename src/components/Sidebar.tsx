@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import ThemeToggle from "./ThemeToggle";
 import {
   IconHome,
   IconUpload,
@@ -98,8 +97,6 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-foot">
-        <ThemeToggle />
-        <div className="sidebar-divider" />
         <div className="sidebar-user-wrap" ref={menuRef}>
           {menuOpen && (
             <div className="user-menu" role="menu">

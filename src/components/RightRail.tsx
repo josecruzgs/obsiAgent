@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import BackgroundPicker from "./BackgroundPicker";
+import ThemeToggle from "./ThemeToggle";
 
 interface SyncSummary {
   at: string;
@@ -159,6 +160,11 @@ export default function RightRail() {
         <div className="widget-row">
           <Link href="/config" className="k">Configuración</Link>
         </div>
+      </div>
+
+      {/* Tema claro/oscuro, al fondo de la barra. */}
+      <div className="rail-foot">
+        <ThemeToggle />
       </div>
     </aside>
   );
