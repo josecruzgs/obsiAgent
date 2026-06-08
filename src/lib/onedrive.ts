@@ -216,7 +216,9 @@ export async function resolveSharePointDrive(
 export interface DriveFile {
   id: string;
   name: string;
-  lastModified?: string; // lastModifiedDateTime (para detectar cambios y re-ingerir)
+  // Marca de revisión para detectar cambios y re-ingerir: cTag cambia cuando
+  // cambia el CONTENIDO del archivo (lo más fiable); con eTag/fecha de respaldo.
+  rev?: string;
 }
 
 /**
@@ -234,7 +236,7 @@ export async function listFolderFiles(
   const base = folder
     ? `${GRAPH}${driveBase}/root:/${encPath(folder)}:/children`
     : `${GRAPH}${driveBase}/root/children`;
-  let url = `${base}?$select=id,name,folder,file,lastModifiedDateTime&$top=200`;
+  let url = `${base}?$select=id,name,folder,file,cTag,eTag,lastModifiedDateTime&$top=200`;
   const out: DriveFile[] = [];
   while (url) {
     const res = await graph(accessToken, url);
@@ -245,6 +247,8 @@ export async function listFolderFiles(
         id: string;
         name: string;
         folder?: unknown;
+        cTag?: string;
+        eTag?: string;
         lastModifiedDateTime?: string;
       }>;
       "@odata.nextLink"?: string;
@@ -254,7 +258,11 @@ export async function listFolderFiles(
       const dot = it.name.lastIndexOf(".");
       const ext = dot >= 0 ? it.name.slice(dot).toLowerCase() : "";
       if (SUPPORTED.includes(ext))
-        out.push({ id: it.id, name: it.name, lastModified: it.lastModifiedDateTime });
+        out.push({
+          id: it.id,
+          name: it.name,
+          rev: it.cTag || it.eTag || it.lastModifiedDateTime,
+        });
     }
     url = j["@odata.nextLink"] ?? "";
   }

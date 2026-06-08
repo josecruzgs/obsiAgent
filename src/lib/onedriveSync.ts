@@ -84,7 +84,7 @@ async function ingestFolder(token: string, opts: IngestOpts): Promise<SyncResult
   for (const f of files) {
     try {
       const extId = extIdPrefix + f.name;
-      const rev = f.lastModified ?? null;
+      const rev = f.rev ?? null;
       const existing = byExtId.get(extId);
 
       // Ya ingerido y sin cambios desde entonces: no reprocesar.
