@@ -5,7 +5,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runAssistant } from "@/lib/agents/assistant";
 import { getBootstrapCompany, type User } from "@/lib/tenancy";
-import { sendText, sendPresence, isAllowed, resolvePhoneJid } from "@/lib/evolution";
+import {
+  sendText,
+  sendAudio,
+  sendPresence,
+  getMediaBase64,
+  isAllowed,
+  resolvePhoneJid,
+} from "@/lib/evolution";
+import { transcribeAudio, synthesizeSpeech } from "@/lib/audio";
 
 // uuid imposible: hace que el filtro "personal" no devuelva nada -> solo empresarial.
 const NO_USER = "00000000-0000-0000-0000-000000000000";
@@ -17,6 +25,7 @@ interface EvolutionMessage {
   message?: {
     conversation?: string;
     extendedTextMessage?: { text?: string };
+    audioMessage?: { mimetype?: string };
   };
   pushName?: string;
 }
@@ -68,16 +77,13 @@ export async function POST(req: NextRequest) {
 async function processMessage(msg: EvolutionMessage): Promise<void> {
   const jid = msg.key?.remoteJid ?? "";
   const fromMe = msg.key?.fromMe ?? false;
-  const text = extractText(msg);
+  const hasAudio = Boolean(msg.message?.audioMessage);
+  let text = extractText(msg);
 
-  // Ignora: mensajes propios, grupos, vacíos.
-  if (fromMe || !text || jid.endsWith("@g.us") || !jid) return;
+  // Ignora: mensajes propios, grupos, y los que no son ni texto ni audio.
+  if (fromMe || jid.endsWith("@g.us") || !jid || (!text && !hasAudio)) return;
 
-  // WhatsApp puede presentar al remitente como LID (id oculto). Para FILTRAR por
-  // número resolvemos su teléfono real; para RESPONDER intentamos primero la
-  // identidad original (el LID), porque así la sesión de cifrado coincide en
-  // todos los dispositivos del usuario (evita "esperando este mensaje"); si el
-  // envío al LID falla, caemos al teléfono.
+  // Resolver LID -> teléfono real (para filtrar y responder).
   let phoneJid: string | null = jid;
   if (jid.endsWith("@lid")) {
     phoneJid = await resolvePhoneJid(jid);
@@ -87,10 +93,7 @@ async function processMessage(msg: EvolutionMessage): Promise<void> {
     }
   }
   const phone = phoneJid.split("@")[0];
-
-  // Responder al teléfono real (Evolution no acepta enviar al @lid). Se deja
-  // como lista por si en el futuro hay más de un destino/fallback.
-  const targets = [phoneJid];
+  const targets = [phoneJid]; // Evolution no envía a @lid; respondemos al teléfono.
 
   if (!isAllowed(phone)) {
     console.log(`[whatsapp] número no autorizado: ${phone}`);
@@ -101,10 +104,30 @@ async function processMessage(msg: EvolutionMessage): Promise<void> {
     return;
   }
 
-  // Muestra "escribiendo…" mientras el agente piensa (mejora la espera).
-  void sendPresence(targets[0], "composing");
+  // Indicador: "grabando audio…" si va a responder con voz; si no, "escribiendo…".
+  void sendPresence(targets[0], hasAudio ? "recording" : "composing");
 
-  await handleQuery(targets, text).catch((e) =>
+  // Nota de voz: descargar, transcribir, y marcar para responder con audio.
+  let wasAudio = false;
+  if (!text && hasAudio) {
+    try {
+      const media = await getMediaBase64(msg.key);
+      if (!media?.base64) throw new Error("no se pudo bajar el audio");
+      text = await transcribeAudio(Buffer.from(media.base64, "base64"), media.mimetype);
+      wasAudio = true;
+    } catch (e) {
+      console.error("[whatsapp] STT error:", e);
+      await sendToFirst(targets, "No pude entender el audio 😕 ¿me lo escribes?");
+      return;
+    }
+    if (!text) {
+      await sendToFirst(targets, "El audio llegó vacío. ¿Me lo escribes?");
+      return;
+    }
+    console.log(`[whatsapp] audio transcrito: ${text.slice(0, 80)}`);
+  }
+
+  await handleQuery(targets, text, wasAudio).catch((e) =>
     console.error("[whatsapp] handleQuery error:", e)
   );
 }
@@ -122,7 +145,11 @@ async function sendToFirst(targets: string[], text: string): Promise<void> {
   }
 }
 
-async function handleQuery(targets: string[], text: string): Promise<void> {
+async function handleQuery(
+  targets: string[],
+  text: string,
+  replyWithAudio = false
+): Promise<void> {
   // WhatsApp consulta la base EMPRESARIAL de la empresa por defecto.
   const company = await getBootstrapCompany();
   const companyUser: User = {
@@ -134,8 +161,30 @@ async function handleQuery(targets: string[], text: string): Promise<void> {
     ms_oid: null,
   };
   // Agente: responde con RAG agéntico y puede crear notas si se le pide.
-  // Respuesta natural por chat: sin pie de "Fuentes" (el agente menciona el
-  // origen en prosa si aporta).
   const result = await runAssistant(text, companyUser, { allowWrite: true });
+
+  // Si el usuario mandó audio, responde con voz (TTS); si falla, cae a texto.
+  if (replyWithAudio) {
+    try {
+      const audio = await synthesizeSpeech(result.answer);
+      await sendAudioToFirst(targets, audio.toString("base64"));
+      return;
+    } catch (e) {
+      console.error("[whatsapp] TTS error (cae a texto):", e);
+    }
+  }
   await sendToFirst(targets, result.answer);
+}
+
+/** Envía una nota de voz al primer destino que funcione. */
+async function sendAudioToFirst(targets: string[], base64Audio: string): Promise<void> {
+  for (const to of targets) {
+    try {
+      await sendAudio(to, base64Audio);
+      console.log(`[whatsapp] audio enviado a ${to}`);
+      return;
+    } catch (e) {
+      console.error(`[whatsapp] sendAudio error (${to}):`, e);
+    }
+  }
 }

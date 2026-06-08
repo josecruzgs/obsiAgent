@@ -84,6 +84,16 @@ export const env = {
     return optional("ANTHROPIC_AGENT_MODEL", this.anthropicModel);
   },
 
+  // OpenAI: SOLO para audio (Whisper STT + TTS) en WhatsApp. Claude no hace audio.
+  get openai() {
+    return {
+      apiKey: optional("OPENAI_API_KEY"),
+      sttModel: optional("OPENAI_STT_MODEL", "whisper-1"),
+      ttsModel: optional("OPENAI_TTS_MODEL", "gpt-4o-mini-tts"),
+      ttsVoice: optional("OPENAI_TTS_VOICE", "alloy"),
+    };
+  },
+
   get voyageApiKey() {
     return required("VOYAGE_API_KEY");
   },
