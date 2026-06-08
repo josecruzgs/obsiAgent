@@ -24,6 +24,7 @@ export interface RunAgentOptions {
   system: string;
   tools: AgentTool[];
   prompt: string; // primer mensaje del usuario
+  history?: Anthropic.MessageParam[]; // turnos previos (memoria conversacional)
   maxSteps?: number; // tope de iticiones del loop (default 8)
   model?: string; // override del modelo (default env.anthropicAgentModel)
   maxTokens?: number; // default 4096
@@ -54,6 +55,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<RunAgentResult> {
   const toolDefs = opts.tools.map((t) => t.def);
   const byName = new Map(opts.tools.map((t) => [t.def.name, t]));
   const messages: Anthropic.MessageParam[] = [
+    ...(opts.history ?? []),
     { role: "user", content: opts.prompt },
   ];
   const toolCalls: { name: string; input: unknown }[] = [];

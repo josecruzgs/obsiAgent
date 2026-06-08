@@ -14,10 +14,14 @@ import {
   resolvePhoneJid,
 } from "@/lib/evolution";
 import { transcribeAudio, synthesizeSpeech } from "@/lib/audio";
+import { getHistory, appendTurn, clearHistory } from "@/lib/agents/memory";
 import { env } from "@/lib/env";
 
 // Petición explícita de hablar por llamada de voz (no nota de voz).
 const CALL_REQUEST = /(ll[aá]mame|ll[aá]mar|llamada de voz|hablar por voz|quiero (una )?llamada)/i;
+
+// Reinicia el hilo de conversación (memoria de corto plazo).
+const RESET_REQUEST = /^(reiniciar|nueva conversaci[oó]n|olvida(?: todo)?|reset)\.?$/i;
 
 // uuid imposible: hace que el filtro "personal" no devuelva nada -> solo empresarial.
 const NO_USER = "00000000-0000-0000-0000-000000000000";
@@ -131,6 +135,13 @@ async function processMessage(msg: EvolutionMessage): Promise<void> {
     console.log(`[whatsapp] audio transcrito: ${text.slice(0, 80)}`);
   }
 
+  // Reinicia el hilo si lo piden.
+  if (RESET_REQUEST.test(text.trim())) {
+    clearHistory(phone);
+    await sendToFirst(targets, "Listo, empecé de cero 👌 ¿En qué te ayudo?");
+    return;
+  }
+
   // Si pide hablar por LLAMADA de voz, mandamos el enlace a la web call.
   if (CALL_REQUEST.test(text)) {
     await sendToFirst(
@@ -140,7 +151,7 @@ async function processMessage(msg: EvolutionMessage): Promise<void> {
     return;
   }
 
-  await handleQuery(targets, text, wasAudio).catch((e) =>
+  await handleQuery(targets, phone, text, wasAudio).catch((e) =>
     console.error("[whatsapp] handleQuery error:", e)
   );
 }
@@ -160,6 +171,7 @@ async function sendToFirst(targets: string[], text: string): Promise<void> {
 
 async function handleQuery(
   targets: string[],
+  phone: string,
   text: string,
   replyWithAudio = false
 ): Promise<void> {
@@ -177,7 +189,13 @@ async function handleQuery(
     ms_oid: null,
   };
   // Agente: responde con RAG agéntico y puede crear notas si se le pide.
-  const result = await runAssistant(text, companyUser, { allowWrite: true });
+  // Se le pasa el historial reciente del teléfono para no perder el contexto.
+  const history = getHistory(phone);
+  const result = await runAssistant(text, companyUser, {
+    allowWrite: true,
+    history,
+  });
+  appendTurn(phone, text, result.answer);
 
   // Si el usuario mandó audio, responde con voz (TTS); si falla, cae a texto.
   if (replyWithAudio) {

@@ -17,6 +17,7 @@ export interface AssistantResult {
 export interface AssistantOptions {
   allowWrite?: boolean; // habilita create_note (WhatsApp)
   label?: string; // etiqueta para el log
+  history?: { role: "user" | "assistant"; content: string }[]; // turnos previos
 }
 
 export async function runAssistant(
@@ -56,12 +57,20 @@ Cómo responder:
     opts.allowWrite
       ? `\n- Si el usuario pide EXPLÍCITAMENTE guardar o crear una nota, usa create_note. No crees notas para responder preguntas.`
       : ""
-  }`;
+  }
+
+Contexto de la conversación:
+- Tienes el historial reciente de este chat. ÚSALO para resolver referencias como
+  "ese dato", "esa nota", "lo anterior", "y entonces…": se refieren a lo que ya
+  hablaron. Si antes confirmaste un dato o leíste una nota, recuérdalo y sigue el
+  hilo en lugar de preguntar "¿en base a qué nota?". Si de verdad hay ambigüedad,
+  vuelve a buscar en las notas antes de decir que no sabes.`;
 
   const r = await runAgent({
     system,
     tools,
     prompt: question,
+    history: opts.history,
     maxSteps: 5,
     maxTokens: 900,
     // Modelo rápido para el chat (Haiku): prioriza latencia sobre profundidad.
