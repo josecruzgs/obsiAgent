@@ -1,7 +1,7 @@
 /* ─── Temas (claro por defecto en :root, oscuro en [data-theme="dark"]) ─── */
 :root {
   --bg: #f3f4fa;
-  --panel: #ffffff;
+  --panel: rgba(255, 255, 255, 0.6);
   --panel-2: #f6f7fb;
   --border: #e8eaf2;
   --text: #161823;
@@ -17,7 +17,7 @@
   --radius: 16px;
   --hero-from: #7c5cff;
   --hero-to: #5b46e0;
-  --acrylic: none; /* en claro las superficies son sólidas (sin desenfoque) */
+  --acrylic: saturate(140%) blur(18px); /* glass también en claro */
   --glass: rgba(255, 255, 255, 0.5); /* panel central tipo cristal */
   color-scheme: light;
 }
