@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import BackgroundPicker from "./BackgroundPicker";
 
 interface SyncSummary {
   at: string;
@@ -139,6 +140,9 @@ export default function RightRail() {
           </Link>
         )}
       </div>
+
+      {/* Fondo (3 temas con imagen) */}
+      <BackgroundPicker />
 
       {/* Atajos */}
       <div className="widget">

@@ -66,17 +66,17 @@ export default function AgentsBoard() {
         >
           <defs>
             <radialGradient id="agCoreGlow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="rgba(120,225,238,0.75)" />
-              <stop offset="55%" stopColor="rgba(72,208,224,0.18)" />
-              <stop offset="100%" stopColor="rgba(72,208,224,0)" />
+              <stop offset="0%" stopColor="rgba(180,165,255,0.8)" />
+              <stop offset="55%" stopColor="rgba(139,123,255,0.2)" />
+              <stop offset="100%" stopColor="rgba(139,123,255,0)" />
             </radialGradient>
             <linearGradient id="agFacetL" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#cdf3f8" />
-              <stop offset="100%" stopColor="#5fcdd9" />
+              <stop offset="0%" stopColor="#e2dcff" />
+              <stop offset="100%" stopColor="#9b8cff" />
             </linearGradient>
             <linearGradient id="agFacetR" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#2e93a3" />
-              <stop offset="100%" stopColor="#103f49" />
+              <stop offset="0%" stopColor="#6c5ce7" />
+              <stop offset="100%" stopColor="#2a1f63" />
             </linearGradient>
           </defs>
 
