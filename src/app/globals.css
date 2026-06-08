@@ -1336,3 +1336,38 @@ code {
   font-size: 12.5px;
   white-space: nowrap;
 }
+
+/* ─── Inicio: fila superior de tarjetas + agentes en 2 columnas ───────── */
+.home-top {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin: 14px 0 24px;
+  align-items: stretch;
+}
+.home-top .stat,
+.home-top .action {
+  height: 100%;
+  margin: 0;
+}
+
+.agents-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 24px;
+  align-items: center;
+}
+.agents-cols .agents-stage {
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+}
+.agents-cols .agents-list {
+  max-width: none;
+  margin: 0;
+}
+@media (max-width: 900px) {
+  .agents-cols {
+    grid-template-columns: 1fr;
+  }
+}

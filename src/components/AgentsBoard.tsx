@@ -56,7 +56,7 @@ export default function AgentsBoard() {
   const anyWorking = agents.some((a) => a.running > 0);
 
   return (
-    <>
+    <div className="agents-cols">
       <div className="agents-stage">
         <svg className="agents-lines" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
           {agents.map((ag, i) => {
@@ -130,6 +130,6 @@ export default function AgentsBoard() {
           );
         })}
       </div>
-    </>
+    </div>
   );
 }

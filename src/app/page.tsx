@@ -58,13 +58,6 @@ export default async function Home() {
         o por WhatsApp.
       </p>
 
-      {/* Agentes: el orquestador y sus agentes; se iluminan al trabajar. */}
-      <h2 style={{ margin: "6px 0 0" }}>Agentes</h2>
-      <p className="subtitle" style={{ marginTop: 2 }}>
-        El orquestador coordina a los agentes. Se iluminan cuando trabajan.
-      </p>
-      <AgentsBoard />
-
       {!stats.ok && (
         <div className="card">
           <p className="error">
@@ -74,7 +67,8 @@ export default async function Home() {
         </div>
       )}
 
-      <div className="stats">
+      {/* Fila superior: stats + accesos, en línea. */}
+      <div className="home-top">
         <div className="stat">
           <div className="stat-head">
             <span
@@ -86,7 +80,7 @@ export default async function Home() {
             Notas indexadas
           </div>
           <div className="stat-num">{stats.notes}</div>
-          <div className="stat-foot">documentos en tu base de conocimiento</div>
+          <div className="stat-foot">documentos en tu base</div>
         </div>
         <div className="stat">
           <div className="stat-head">
@@ -101,10 +95,6 @@ export default async function Home() {
           <div className="stat-num">{stats.links}</div>
           <div className="stat-foot">conexiones detectadas por la IA</div>
         </div>
-      </div>
-
-      <h2 style={{ margin: "10px 0 14px" }}>¿Por dónde empiezo?</h2>
-      <div className="actions">
         {ACTIONS.map((a) => (
           <Link key={a.href} href={a.href} className="action">
             <div className="action-icon" style={{ background: a.bg, color: a.color }}>
@@ -115,6 +105,13 @@ export default async function Home() {
           </Link>
         ))}
       </div>
+
+      {/* Agentes: diagrama (izq) + lista de funciones (der). */}
+      <h2 style={{ margin: "6px 0 0" }}>Agentes</h2>
+      <p className="subtitle" style={{ marginTop: 2 }}>
+        El orquestador coordina a los agentes. Se iluminan cuando trabajan.
+      </p>
+      <AgentsBoard />
     </>
   );
 }
