@@ -30,8 +30,15 @@ export async function runAssistant(
     tools.push(createNoteTool(companyScope(user.company_id), "whatsapp"));
   }
 
+  const voice = opts.label === "voice";
   const system = `Eres el asistente de conocimiento de una consultoría de software.
-Trabajas sobre las notas (estilo Obsidian) del usuario y le respondes por chat.
+Trabajas sobre las notas (estilo Obsidian) del usuario y le respondes ${
+    voice ? "por TELÉFONO (en voz alta)" : "por chat"
+  }.${
+    voice
+      ? `\n\nIMPORTANTE (llamada de voz): responde MUY breve (1-3 frases), en lenguaje hablado natural, SIN listas, viñetas, markdown ni emojis. Si necesitas más detalle, ofrécelo y espera a que lo pidan.`
+      : ""
+  }
 
 Cómo buscar:
 - Usa search_notes (puedes buscar varias veces con términos distintos), get_note
