@@ -18,6 +18,7 @@
   --hero-from: #7c5cff;
   --hero-to: #5b46e0;
   --acrylic: none; /* en claro las superficies son sólidas (sin desenfoque) */
+  --glass: rgba(255, 255, 255, 0.5); /* panel central tipo cristal */
   color-scheme: light;
 }
 
@@ -41,6 +42,7 @@ html[data-theme="dark"] {
   --hero-from: #7c5cff;
   --hero-to: #4f3fd0;
   --acrylic: saturate(140%) blur(18px);
+  --glass: rgba(16, 16, 28, 0.46); /* panel central tipo cristal */
   /* Hace que los controles nativos (desplegable del select, scrollbars) salgan
      en oscuro: arregla el listado del <select> que se veía claro. */
   color-scheme: dark;
@@ -406,8 +408,15 @@ html[data-bg] .page-bg {
   min-width: 0;
 }
 .content {
-  width: 100%;
-  padding: 24px 32px 56px;
+  flex: 1;
+  margin: 16px;
+  padding: 24px 28px 40px;
+  border-radius: 22px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(16px) saturate(130%);
+  backdrop-filter: blur(16px) saturate(130%);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
 }
 
 /* ─── Rail derecho (widgets del sistema) ─────────────────────────────── */
@@ -1574,20 +1583,18 @@ code {
 /* Contenedor de inicio: ocupa todo el ancho del área principal con la escena
    oscura (grid + resplandor al centro), sangrando el padding de .content. */
 .home {
-  margin: -24px -32px -56px;
-  min-height: calc(100vh - 56px);
-  padding-bottom: 48px;
+  /* Sin base opaca: se ve la imagen del tema (a través del cristal). Mantiene
+     la retícula y un resplandor morado suave al centro. */
   background:
-    radial-gradient(circle at 50% 30%, rgba(139,123,255,0.42), rgba(10,8,24,0) 58%),
-    linear-gradient(rgba(150,140,230,0.05) 1px, transparent 1px) 0 0 / 30px 30px,
-    linear-gradient(90deg, rgba(150,140,230,0.05) 1px, transparent 1px) 0 0 / 30px 30px,
-    radial-gradient(circle at 50% 38%, #161232, #0a0816 85%);
+    radial-gradient(circle at 50% 26%, rgba(139,123,255,0.28), transparent 56%),
+    linear-gradient(rgba(160,150,235,0.06) 1px, transparent 1px) 0 0 / 30px 30px,
+    linear-gradient(90deg, rgba(160,150,235,0.06) 1px, transparent 1px) 0 0 / 30px 30px;
 }
 
 /* Zona visual (constelación) a todo lo ancho; el cristal queda centrado. */
 .home-hero {
   position: relative;
-  padding: 16px 24px 0;
+  padding: 8px 0 0;
 }
 .home-hero .agents-stage {
   max-width: 760px;
@@ -1605,8 +1612,7 @@ code {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 14px;
-  margin: 8px 0 0;
-  padding: 0 32px;
+  margin: 10px 0 0;
   align-items: stretch;
 }
 .home-top .stat,
