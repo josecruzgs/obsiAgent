@@ -76,12 +76,9 @@ export default function BackgroundPicker() {
           <button
             key={opt}
             type="button"
-            className={`bg-opt${bg === opt ? " active" : ""}`}
-            style={
-              opt === "none"
-                ? undefined
-                : { backgroundImage: `url(/images/${opt}.jpg)` }
-            }
+            className={`bg-opt${bg === opt ? " active" : ""}${
+              opt === "none" ? "" : ` bg-opt-${opt}`
+            }`}
             onClick={() => chooseBg(opt)}
             title={opt === "none" ? "Sin imagen" : `Tema ${opt}`}
             aria-label={opt === "none" ? "Sin imagen de fondo" : `Tema ${opt}`}

@@ -226,17 +226,31 @@ html[data-bg] body {
   background-attachment: fixed;
   background-repeat: no-repeat;
 }
-html[data-bg="1"] body {
+/* Versión OSCURA (default): {n}.jpg con overlay oscuro para legibilidad. */
+html[data-theme="dark"][data-bg="1"] body {
   background-image: linear-gradient(rgba(8, 8, 16, 0.62), rgba(8, 8, 16, 0.62)),
     url("/images/1.jpg");
 }
-html[data-bg="2"] body {
+html[data-theme="dark"][data-bg="2"] body {
   background-image: linear-gradient(rgba(8, 8, 16, 0.62), rgba(8, 8, 16, 0.62)),
     url("/images/2.jpg");
 }
-html[data-bg="3"] body {
+html[data-theme="dark"][data-bg="3"] body {
   background-image: linear-gradient(rgba(8, 8, 16, 0.62), rgba(8, 8, 16, 0.62)),
     url("/images/3.jpg");
+}
+/* Versión CLARA: {n}light.jpg con overlay claro. */
+html:not([data-theme="dark"])[data-bg="1"] body {
+  background-image: linear-gradient(rgba(243, 244, 250, 0.55), rgba(243, 244, 250, 0.55)),
+    url("/images/1light.jpg");
+}
+html:not([data-theme="dark"])[data-bg="2"] body {
+  background-image: linear-gradient(rgba(243, 244, 250, 0.55), rgba(243, 244, 250, 0.55)),
+    url("/images/2light.jpg");
+}
+html:not([data-theme="dark"])[data-bg="3"] body {
+  background-image: linear-gradient(rgba(243, 244, 250, 0.55), rgba(243, 244, 250, 0.55)),
+    url("/images/3light.jpg");
 }
 /* Con una imagen activa, ocultamos el efecto morado en movimiento. */
 html[data-bg] .page-bg {
@@ -277,6 +291,25 @@ html[data-bg] .page-bg {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+}
+/* Miniaturas duales: oscuras por defecto, claras en modo claro. */
+.bg-opt-1 {
+  background-image: url("/images/1.jpg");
+}
+.bg-opt-2 {
+  background-image: url("/images/2.jpg");
+}
+.bg-opt-3 {
+  background-image: url("/images/3.jpg");
+}
+html:not([data-theme="dark"]) .bg-opt-1 {
+  background-image: url("/images/1light.jpg");
+}
+html:not([data-theme="dark"]) .bg-opt-2 {
+  background-image: url("/images/2light.jpg");
+}
+html:not([data-theme="dark"]) .bg-opt-3 {
+  background-image: url("/images/3light.jpg");
 }
 .bg-opt {
   aspect-ratio: 1 / 1;
