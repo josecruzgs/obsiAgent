@@ -7,6 +7,7 @@ import { SESSION_COOKIE, verifySession } from "@/lib/session";
 // Rutas públicas o de máquina (no requieren sesión de usuario).
 const PUBLIC_PREFIXES = [
   "/login",
+  "/m", // magic link de acceso (token corto, un solo uso)
   "/api/auth", // flujo de login con Microsoft
   "/api/whatsapp", // webhook externo (Evolution API)
   "/api/bulk-import", // cron, protegido por token

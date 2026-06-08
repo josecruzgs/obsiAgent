@@ -10,7 +10,7 @@ import {
   getUserByPhone,
   type User,
 } from "@/lib/tenancy";
-import { signMagicToken } from "@/lib/session";
+import { createMagicToken } from "@/lib/magicLink";
 import {
   sendText,
   sendAudio,
@@ -164,10 +164,10 @@ async function processMessage(msg: EvolutionMessage): Promise<void> {
       );
       return;
     }
-    const { token } = await signMagicToken(dbUser.id);
+    const token = createMagicToken(dbUser.id);
     await sendToFirst(
       targets,
-      `🔓 Tu acceso directo (válido 10 min, un solo uso):\n${env.publicBaseUrl}/api/auth/magic?t=${token}`
+      `🔓 Tu acceso directo (válido 10 min, un solo uso):\n${env.publicBaseUrl}/m/${token}`
     );
     return;
   }
