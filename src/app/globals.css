@@ -1823,10 +1823,14 @@ code {
     flex: 1;
     min-height: 0;
     align-items: stretch; /* las dos columnas a la altura del cristal */
+    /* Acota la fila del grid al alto disponible: sin esto la fila crece con el
+       contenido (las 20 notas) y el scroll interno nunca se activa → se corta. */
+    grid-template-rows: minmax(0, 1fr);
   }
   .content:has(.notas-layout) .notas-list-card {
     max-height: none;
     height: 100%;
+    min-height: 0; /* permite que la zona de scroll encoja en vez de desbordar */
   }
   .content:has(.notas-layout) .notas-editor-card {
     min-height: 0;
