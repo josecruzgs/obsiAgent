@@ -19,7 +19,28 @@ interface NoteRow {
   id: string;
   title: string | null;
   summary: string | null;
+  content?: string | null;
   distance?: number;
+}
+
+/** Extracto de una línea del cuerpo de una nota. Permite que search_notes
+ *  devuelva datos concretos (códigos, teléfonos, fechas) directamente, sin
+ *  depender de que el agente abra la nota después con get_note. */
+function excerpt(content: string | null | undefined, max = 600): string {
+  const t = (content ?? "").replace(/\s+/g, " ").trim();
+  return t.length > max ? `${t.slice(0, max)}…` : t;
+}
+
+/** Formatea un resultado de search_notes: título, id, resumen y extracto. */
+function formatHit(r: NoteRow): string {
+  const ex = excerpt(r.content);
+  return [
+    `- "${r.title ?? r.id}" (id: ${r.id})`,
+    r.summary ? `  resumen: ${r.summary}` : "",
+    ex ? `  extracto: ${ex}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 // Filtro SQL del ámbito: notas de la empresa, empresariales (owner null) o del
@@ -36,7 +57,7 @@ export function buildReadTools(scope: Scope): AgentTool[] {
       description:
         "Busca notas existentes por similitud semántica dentro de la base. " +
         "Úsalo para encontrar el proyecto o cliente relacionado y contexto previo. " +
-        "Devuelve una lista de notas con su título, id y resumen.",
+        "Devuelve una lista de notas con su título, id, resumen y un extracto del contenido.",
       input_schema: {
         type: "object",
         properties: {
@@ -50,7 +71,7 @@ export function buildReadTools(scope: Scope): AgentTool[] {
       const vec = await embedQuery(String(input.query ?? ""));
       const k = Math.min(Math.max(Number(input.k) || 5, 1), 15);
       const rows = await query<NoteRow>(
-        `select id, title, summary, embedding <=> $1 as distance
+        `select id, title, summary, content, embedding <=> $1 as distance
            from notes
           where embedding is not null and ${SCOPE_SQL}
           order by embedding <=> $1
@@ -58,14 +79,7 @@ export function buildReadTools(scope: Scope): AgentTool[] {
         [toVectorLiteral(vec), scope.companyId, scope.userId, k]
       );
       if (rows.length === 0) return "Sin resultados.";
-      return rows
-        .map(
-          (r) =>
-            `- "${r.title ?? r.id}" (id: ${r.id})${
-              r.summary ? ` — ${r.summary}` : ""
-            }`
-        )
-        .join("\n");
+      return rows.map(formatHit).join("\n\n");
     },
   };
 
@@ -127,7 +141,9 @@ export function buildUserReadTools(user: User, sources?: Set<string>): AgentTool
       name: "search_notes",
       description:
         "Busca notas por similitud semántica en el conocimiento del usuario. " +
-        "Puedes buscar varias veces con términos distintos. Devuelve título, id y resumen.",
+        "Puedes buscar varias veces con términos distintos. Devuelve título, id, " +
+        "resumen y un extracto del contenido (úsalo para datos concretos como " +
+        "códigos, teléfonos o fechas).",
       input_schema: {
         type: "object",
         properties: {
@@ -142,7 +158,7 @@ export function buildUserReadTools(user: User, sources?: Set<string>): AgentTool
       const k = Math.min(Math.max(Number(input.k) || 6, 1), 15);
       const f = readableNotesFilter(user, 2); // $1 = vector
       const rows = await query<NoteRow>(
-        `select id, title, summary, embedding <=> $1 as distance
+        `select id, title, summary, content, embedding <=> $1 as distance
            from notes
           where embedding is not null and ${f.sql}
           order by embedding <=> $1
@@ -150,14 +166,10 @@ export function buildUserReadTools(user: User, sources?: Set<string>): AgentTool
         [toVectorLiteral(vec), ...f.params, k]
       );
       if (rows.length === 0) return "Sin resultados.";
-      // No marcamos fuentes aquí: search solo surfacea candidatos. Las fuentes
-      // reales son las notas que el agente decide LEER (get_note).
-      return rows
-        .map(
-          (r) =>
-            `- "${r.title ?? r.id}" (id: ${r.id})${r.summary ? ` — ${r.summary}` : ""}`
-        )
-        .join("\n");
+      // Incluimos un extracto del contenido para que datos concretos (códigos,
+      // teléfonos, fechas) lleguen directo, sin depender de un get_note posterior.
+      // Las fuentes reales se marcan en get_note (lo que el agente decide leer).
+      return rows.map(formatHit).join("\n\n");
     },
   };
 
