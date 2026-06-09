@@ -2375,3 +2375,207 @@ html:not([data-theme="dark"]) .scene-node.working .scene-label strong {
 .voice-call-btn.talking {
   animation: agentBlink 0.9s ease-in-out infinite;
 }
+
+/* ─── Pantalla de voz a pantalla completa (/voz, enfoque móvil) ─────────── */
+.voice-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(20px, env(safe-area-inset-top)) 20px
+    max(28px, env(safe-area-inset-bottom));
+  color: var(--text);
+  /* Glow del acento sobre el fondo del tema: vibrante pero respeta light/dark. */
+  background:
+    radial-gradient(110% 80% at 50% 30%, var(--accent-soft), transparent 60%),
+    radial-gradient(
+      130% 100% at 50% 120%,
+      color-mix(in srgb, var(--accent) 30%, var(--bg)),
+      var(--bg) 70%
+    );
+}
+
+/* Flecha de volver, arriba a la izquierda. */
+.voice-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--acrylic);
+  backdrop-filter: var(--acrylic);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+.voice-back:hover {
+  background: var(--accent-soft);
+}
+.voice-back:active {
+  transform: scale(0.94);
+}
+
+/* Zona central: micrófono + estado, centrada vertical. */
+.voice-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  width: 100%;
+}
+
+/* El orbe es el micrófono: botón circular con gradiente del acento. */
+.voice-orb {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 168px;
+  height: 168px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--accent) 85%, #fff),
+    var(--accent)
+  );
+  box-shadow:
+    0 18px 50px color-mix(in srgb, var(--accent) 45%, transparent),
+    inset 0 2px 10px rgba(255, 255, 255, 0.25);
+  transition: transform 0.12s ease, box-shadow 0.2s ease;
+}
+.voice-orb:active {
+  transform: scale(0.96);
+}
+.voice-orb:disabled {
+  cursor: default;
+}
+.voice-mic {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+}
+
+/* Ondas de voz: anillos que crecen y se desvanecen alrededor del micrófono. */
+.voice-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+/* Latido suave mientras espera (idle) y conecta. */
+.voice-shell.state-idle .voice-orb {
+  animation: voiceBreathe 2.6s ease-in-out infinite;
+}
+.voice-shell.state-connecting .voice-ring,
+.voice-shell.state-live .voice-ring {
+  animation: voiceRipple 2.4s ease-out infinite;
+}
+.voice-shell .voice-ring.r2 {
+  animation-delay: 0.8s;
+}
+.voice-shell .voice-ring.r3 {
+  animation-delay: 1.6s;
+}
+/* Cuando el agente habla, las ondas van más rápido e intensas. */
+.voice-shell.is-talking .voice-ring {
+  animation-duration: 1.3s;
+  border-color: color-mix(in srgb, var(--accent) 80%, transparent);
+}
+
+@keyframes voiceRipple {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+@keyframes voiceBreathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Estado / temporizador bajo el micrófono. */
+.voice-status {
+  min-height: 24px;
+  text-align: center;
+}
+.voice-hint {
+  font-size: 15px;
+  color: var(--muted);
+}
+.voice-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.voice-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  box-shadow: 0 0 10px var(--accent-2);
+  animation: agentBlink 1.4s ease-in-out infinite;
+}
+
+/* Zona de acciones (colgar). Reserva alto para que el layout no salte. */
+.voice-actions {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.voice-hangup {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #fff;
+  background: var(--danger);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--danger) 45%, transparent);
+  transition: transform 0.12s ease, filter 0.2s ease;
+}
+.voice-hangup:hover {
+  filter: brightness(1.05);
+}
+.voice-hangup:active {
+  transform: scale(0.94);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-shell .voice-ring,
+  .voice-shell.state-idle .voice-orb,
+  .voice-dot {
+    animation: none;
+  }
+}

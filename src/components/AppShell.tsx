@@ -14,6 +14,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return <div className="auth-shell">{children}</div>;
   }
 
+  // /voz es una pantalla de llamada a pantalla completa (móvil): sin navegación.
+  if (pathname === "/voz") {
+    return <>{children}</>;
+  }
+
   // El grafo necesita todo el ancho: ahí no mostramos el rail derecho.
   const showRail = !pathname.startsWith("/graph");
 
