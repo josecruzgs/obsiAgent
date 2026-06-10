@@ -73,6 +73,13 @@ async function run(): Promise<void> {
   // Revisión de la fuente (p. ej. lastModifiedDateTime del archivo): si cambia,
   // se re-ingiere la nota en su lugar (sin crear otro nodo).
   await query(`alter table notes add column if not exists source_rev text`);
+  // Hash del contenido (sha256): si la re-ingesta tiene el mismo contenido, se
+  // salta la digestión con Claude y el re-embedding (ahorro de tokens).
+  await query(`alter table notes add column if not exists content_hash text`);
+  await query(
+    `create index if not exists notes_content_hash_idx
+       on notes (content_hash) where content_hash is not null`
+  );
 
   // Conexiones a OneDrive por ámbito: empresarial (owner null) o personal (por usuario).
   await query(`create table if not exists onedrive_connections (

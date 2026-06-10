@@ -31,21 +31,39 @@ function extractJson(text: string): string {
   return text.trim();
 }
 
+// Muestreo para la digestión: para extraer metadatos (título/resumen/tags) no
+// hace falta el documento entero. Si es largo, enviamos cabeza + cola —donde
+// suele concentrarse lo esencial— en vez de los primeros 40k chars. Recorta el
+// componente más grande del input por documento.
+const DIGEST_HEAD = 12000;
+const DIGEST_TAIL = 4000;
+function sampleForDigest(raw: string): string {
+  if (raw.length <= DIGEST_HEAD + DIGEST_TAIL) return raw;
+  return `${raw.slice(0, DIGEST_HEAD)}\n\n[…fragmento omitido…]\n\n${raw.slice(
+    -DIGEST_TAIL
+  )}`;
+}
+
 /**
  * "Digiere" un documento raw: genera título, resumen, tags y propone enlaces a
- * notas existentes. `existingTitles` se pasa como contexto cacheable para que el
- * modelo solo enlace a notas reales (no inventadas).
+ * notas existentes. `candidateTitles` son los títulos a los que se PUEDE enlazar
+ * (todos los del ámbito si es pequeño, o solo los vecinos más cercanos si es
+ * grande). `opts.cacheTitles` marca ese bloque como cacheable: hazlo solo cuando
+ * la lista sea estable entre ingestas (vault pequeño); con candidatos que varían
+ * por documento, cachear solo añade costo de escritura sin lecturas que lo amorticen.
  */
 export async function digestDocument(
   raw: string,
-  existingTitles: string[],
-  hintTitle?: string
+  candidateTitles: string[],
+  hintTitle?: string,
+  opts: { cacheTitles?: boolean } = {}
 ): Promise<DigestResult> {
   const titlesBlock =
-    existingTitles.length > 0
-      ? existingTitles.map((t) => `- ${t}`).join("\n")
+    candidateTitles.length > 0
+      ? candidateTitles.map((t) => `- ${t}`).join("\n")
       : "(el vault está vacío todavía)";
 
+  const titlesText = `Notas existentes en el vault (usa estos títulos EXACTOS para suggestedLinks):\n${titlesBlock}`;
   const system = [
     {
       type: "text" as const,
@@ -56,10 +74,13 @@ export async function digestDocument(
         "objeto JSON válido, sin texto adicional.",
     },
     {
-      // Bloque cacheable: la lista de notas existentes cambia poco entre ingestas.
       type: "text" as const,
-      text: `Notas existentes en el vault (usa estos títulos EXACTOS para suggestedLinks):\n${titlesBlock}`,
-      cache_control: { type: "ephemeral" as const },
+      text: titlesText,
+      // Cacheable solo si la lista es estable (vault pequeño): así un lote entero
+      // de ingestas reusa el mismo prefijo y pega cache en cada documento.
+      ...(opts.cacheTitles
+        ? { cache_control: { type: "ephemeral" as const } }
+        : {}),
     },
   ];
 
@@ -68,7 +89,7 @@ export async function digestDocument(
   }:
 
 <documento>
-${raw.slice(0, 40000)}
+${sampleForDigest(raw)}
 </documento>
 
 Devuelve un JSON con esta forma exacta:
@@ -84,7 +105,7 @@ Reglas:
 - "tags" en minúsculas, sin "#", máximo 6.`;
 
   const msg = await client().messages.create({
-    model: env.anthropicModel,
+    model: env.anthropicDigestModel,
     max_tokens: 1024,
     system,
     messages: [{ role: "user", content: userPrompt }],
@@ -98,7 +119,7 @@ Reglas:
   const parsed = digestSchema.parse(JSON.parse(extractJson(text)));
 
   // Filtra enlaces a notas que de verdad existen (defensa extra).
-  const existingSet = new Set(existingTitles);
+  const existingSet = new Set(candidateTitles);
   parsed.suggestedLinks = parsed.suggestedLinks.filter((l) => existingSet.has(l));
 
   return parsed;

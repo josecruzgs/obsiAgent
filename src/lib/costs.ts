@@ -4,12 +4,18 @@
 // no es una factura.
 //
 // Modelos reales en uso (ver src/lib/env.ts y src/lib/audio.ts):
-//   - claude-sonnet-4-6  → digestión de documentos y resúmenes de reuniones
-//   - claude-haiku-4-5    → respuestas RAG (/buscador) y clasificación
+//   - claude-haiku-4-5    → digestión de documentos (ANTHROPIC_DIGEST_MODEL),
+//                           respuestas RAG (/buscador) y clasificación
+//   - claude-sonnet-4-6  → resúmenes de reuniones (agente, ANTHROPIC_AGENT_MODEL)
 //   - voyage-3.5          → embeddings (búsqueda semántica)
 //   - whisper-1           → voz→texto (WhatsApp)
 //   - gpt-4o-mini-tts     → texto→voz (WhatsApp)
 //   - Retell AI           → agente de voz por teléfono
+//
+// Ahorros en la ingesta (ver [[ingest-token-savings]]): la digestión pasó de
+// Sonnet a Haiku, el doc se trunca a cabeza+cola (~16k chars en vez de 40k) y
+// las re-ingestas idénticas / notas muy cortas no llaman a Claude (no se
+// modelan aquí: el costo unitario asume un documento NUEVO y largo).
 
 // Precios aproximados (USD). Ajusta aquí si cambian las tarifas.
 export const PRICING = {
@@ -50,9 +56,9 @@ export const INTERACTIONS: Interaction[] = [
   {
     key: "doc",
     label: "Documento ingerido",
-    hint: "Sonnet digiere el doc (~12k tok entrada, ~500 salida) + embedding Voyage",
+    hint: "Haiku digiere el doc truncado (~5k tok entrada, ~500 salida) + embedding Voyage. Re-ingestas idénticas y notas muy cortas no llaman a Claude.",
     defaultQty: 50,
-    unitCost: chat(12_000, 500, PRICING.sonnet) + embed(8_000),
+    unitCost: chat(5_000, 500, PRICING.haiku) + embed(8_000),
   },
   {
     key: "pregunta",

@@ -83,6 +83,12 @@ export const env = {
   get anthropicAgentModel() {
     return optional("ANTHROPIC_AGENT_MODEL", this.anthropicModel);
   },
+  // Modelo para DIGERIR documentos al ingerir (título/resumen/tags/enlaces).
+  // Es una tarea sencilla -> Haiku por defecto (≈1/3 del costo de Sonnet).
+  // Súbelo a ANTHROPIC_MODEL si quieres metadatos de mayor calidad.
+  get anthropicDigestModel() {
+    return optional("ANTHROPIC_DIGEST_MODEL", "claude-haiku-4-5-20251001");
+  },
 
   // Retell AI: agente de voz (llamada web / teléfono). apiKey + id del agente.
   get retell() {

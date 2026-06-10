@@ -33,5 +33,9 @@ yarn-error.log*
 /vault-local/
 /vault/
 
+# skill `decks`: tooling pesado y datos demo (regenerables)
+/tools/decks/node_modules/
+/tools/decks/demo-vault/
+
 # docker volumes
 /pgdata/

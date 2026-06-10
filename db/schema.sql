@@ -29,6 +29,7 @@ create table if not exists notes (
   summary     text,
   tags        text[] default '{}',
   content     text,
+  content_hash text,                   -- sha256 del contenido: salta re-ingestas idénticas
   embedding   vector(1024),            -- voyage-3.5 => 1024 dimensiones
   -- Scope: empresa dueña y, si es una nota personal, el usuario dueño (null = empresarial).
   company_id    uuid references companies(id) on delete cascade,

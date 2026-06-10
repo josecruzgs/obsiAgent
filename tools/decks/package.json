@@ -1,0 +1,10 @@
+{
+  "name": "decks-tooling",
+  "private": true,
+  "description": "Tooling aislado para la skill `decks` (Playwright). No afecta al package.json raíz.",
+  "dependencies": {
+    "marked": "^18.0.5",
+    "obsiagent": "file:../..",
+    "playwright": "^1.49.0"
+  }
+}

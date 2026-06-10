@@ -6,8 +6,17 @@ import { parseWikilinks } from "./vault";
 import type { VaultNote } from "./types";
 import type { Scope } from "./scope";
 
-/** Upsert de una nota en la DB (embedding + enlaces + ámbito). */
-export async function indexNote(note: VaultNote, scope: Scope): Promise<void> {
+/**
+ * Upsert de una nota en la DB (embedding + enlaces + ámbito).
+ * `precomputedEmbedding` permite reutilizar un embedding ya calculado (p. ej. el
+ * que la ingesta usa para elegir candidatos de enlace) y evitar un segundo
+ * llamado a Voyage por documento.
+ */
+export async function indexNote(
+  note: VaultNote,
+  scope: Scope,
+  precomputedEmbedding?: number[]
+): Promise<void> {
   const title = note.frontmatter.title ?? note.id;
   const summary = note.frontmatter.summary ?? null;
   const tags = Array.isArray(note.frontmatter.tags)
@@ -15,7 +24,7 @@ export async function indexNote(note: VaultNote, scope: Scope): Promise<void> {
     : [];
 
   const textForEmbedding = `${title}\n\n${summary ?? ""}\n\n${note.body}`;
-  const embedding = await embedDocument(textForEmbedding);
+  const embedding = precomputedEmbedding ?? (await embedDocument(textForEmbedding));
 
   await query(
     `insert into notes (id, path, title, summary, tags, content, embedding, company_id, owner_user_id, updated_at)
