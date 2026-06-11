@@ -104,6 +104,9 @@ Reglas:
 - "suggestedLinks" debe contener solo títulos que aparezcan EXACTAMENTE en la lista de notas existentes; si ninguna es relevante, devuelve [].
 - "tags" en minúsculas, sin "#", máximo 6.`;
 
+  // Auditoría: deja constancia en los logs de QUÉ modelo digiere (verificable con
+  // `docker compose logs app | grep "\[digest\] modelo"`).
+  console.log("[digest] modelo:", env.anthropicDigestModel);
   const msg = await client().messages.create({
     model: env.anthropicDigestModel,
     max_tokens: 1024,

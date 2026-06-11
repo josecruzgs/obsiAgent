@@ -89,6 +89,12 @@ export const env = {
   get anthropicDigestModel() {
     return optional("ANTHROPIC_DIGEST_MODEL", "claude-haiku-4-5-20251001");
   },
+  // Modelo para el agente de PÁGINAS DE ENTIDAD/TEMA (wiki que compone). Haiku
+  // por defecto para acotar el costo (toca varias páginas). Súbelo a Sonnet si
+  // quieres síntesis de mayor calidad.
+  get anthropicEntityModel() {
+    return optional("ANTHROPIC_ENTITY_MODEL", "claude-haiku-4-5-20251001");
+  },
 
   // Retell AI: agente de voz (llamada web / teléfono). apiKey + id del agente.
   get retell() {
