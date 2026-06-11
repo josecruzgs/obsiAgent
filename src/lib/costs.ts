@@ -3,10 +3,11 @@
 // por interacción si tu uso real difiere. Sirve para dar una idea de magnitud,
 // no es una factura.
 //
-// Modelos reales en uso (ver src/lib/env.ts y src/lib/audio.ts):
-//   - claude-haiku-4-5    → digestión de documentos (ANTHROPIC_DIGEST_MODEL),
-//                           respuestas RAG (/buscador) y clasificación
-//   - claude-sonnet-4-6  → resúmenes de reuniones (agente, ANTHROPIC_AGENT_MODEL)
+// Modelos reales en uso EN PRODUCCIÓN (según el .env del VPS: ANSWER_MODEL=Sonnet):
+//   - claude-haiku-4-5    → digestión de documentos (ANTHROPIC_DIGEST_MODEL)
+//   - claude-sonnet-4-6  → respuestas del buscador/WhatsApp y clasificación
+//                           (ANTHROPIC_ANSWER_MODEL=sonnet en el .env, no el default)
+//                           + resúmenes de reuniones (ANTHROPIC_AGENT_MODEL=sonnet)
 //   - voyage-3.5          → embeddings (búsqueda semántica)
 //   - whisper-1           → voz→texto (WhatsApp)
 //   - gpt-4o-mini-tts     → texto→voz (WhatsApp)
@@ -63,9 +64,9 @@ export const INTERACTIONS: Interaction[] = [
   {
     key: "pregunta",
     label: "Pregunta (buscador)",
-    hint: "Haiku responde con contexto RAG (~6k tok entrada, ~400 salida) + embedding de la consulta",
+    hint: "Sonnet responde con contexto RAG (~6k tok entrada, ~400 salida) + embedding de la consulta",
     defaultQty: 200,
-    unitCost: chat(6_000, 400, PRICING.haiku) + embed(200),
+    unitCost: chat(6_000, 400, PRICING.sonnet) + embed(200),
   },
   {
     key: "reunion",
@@ -77,18 +78,18 @@ export const INTERACTIONS: Interaction[] = [
   {
     key: "whatsapp",
     label: "Mensaje WhatsApp (voz)",
-    hint: "Whisper (~0.5 min) + Haiku responde + TTS (~0.5 min)",
+    hint: "Whisper (~0.5 min) + Sonnet responde + TTS (~0.5 min)",
     defaultQty: 100,
     unitCost:
       0.5 * PRICING.whisper +
-      chat(5_000, 300, PRICING.haiku) +
+      chat(5_000, 300, PRICING.sonnet) +
       0.5 * PRICING.tts,
   },
   {
     key: "llamada",
     label: "Llamada de voz (Retell)",
     hint: "Agente de voz Retell, ~3 min por llamada",
-    defaultQty: 30,
+    defaultQty: 15,
     unitCost: 3 * PRICING.retellPerMin,
   },
 ];
