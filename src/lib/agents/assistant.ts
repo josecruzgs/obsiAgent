@@ -4,7 +4,8 @@
 // pide explícitamente (acciones de WhatsApp, #5).
 import { runAgent } from "../agent/runtime";
 import { buildUserReadTools, createNoteTool } from "../agent/tools";
-import { companyScope } from "../scope";
+import { companyScope, personalScope } from "../scope";
+import { appendLog } from "../log";
 import { query } from "../db";
 import { env } from "../env";
 import type { User } from "../tenancy";
@@ -25,6 +26,15 @@ export async function runAssistant(
   user: User,
   opts: AssistantOptions = {}
 ): Promise<AssistantResult> {
+  // Bitácora (patrón log.md): registra la consulta en el log personal del usuario.
+  // Best-effort y costo cero (no llama a IA). Cubre /search, WhatsApp y voz.
+  const channel = opts.label ? `[${opts.label}] ` : "";
+  await appendLog(
+    personalScope(user.company_id, user.id),
+    "query",
+    `${channel}${question.slice(0, 200)}`
+  );
+
   const sources = new Set<string>();
   const tools = buildUserReadTools(user, sources);
   if (opts.allowWrite) {

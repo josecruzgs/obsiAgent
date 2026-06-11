@@ -6,6 +6,7 @@ import { digestDocument } from "./claude";
 import { listNoteTitles, slugify, writeNote, readNote } from "./vault";
 import { indexNote } from "./indexer";
 import { embedDocument } from "./embeddings";
+import { appendLog } from "./log";
 import { query, toVectorLiteral } from "./db";
 import { scopeSubdir, type Scope } from "./scope";
 import type { DigestResult, NoteFrontmatter } from "./types";
@@ -195,6 +196,10 @@ export async function ingestText(
   await query(`update notes set content_hash = $1 where id = $2`, [hash, id]).catch(
     (e) => console.error("[ingest] content_hash:", e)
   );
+
+  // Bitácora (patrón log.md): registra la ingesta real. Best-effort (no rompe si
+  // falla). Los saltos por hash/dedup retornan antes y NO se registran.
+  await appendLog(ctx.scope, existingId ? "update" : "ingest", `${digest.title} — ${id}`);
 
   return {
     id,

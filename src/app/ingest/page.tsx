@@ -56,7 +56,13 @@ export default function IngestPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function addFiles(list: FileList | null) {
-    if (list && list.length) setFiles((prev) => [...prev, ...Array.from(list)]);
+    if (!list || !list.length) return;
+    // Importante: materializa el array AHORA (sincrónico). El onChange limpia
+    // `e.target.value` justo después, lo que vacía el FileList; si dejáramos el
+    // `Array.from(list)` dentro del updater de setFiles (que corre después),
+    // leería una lista ya vacía y no se adjuntaría nada.
+    const arr = Array.from(list);
+    setFiles((prev) => [...prev, ...arr]);
   }
   function removeFile(idx: number) {
     setFiles((prev) => prev.filter((_, i) => i !== idx));

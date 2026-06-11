@@ -6,6 +6,7 @@
 import { query } from "./db";
 import { readNote, writeNote } from "./vault";
 import { indexNote } from "./indexer";
+import { appendLog } from "./log";
 import { scopeSubdir, type Scope } from "./scope";
 import { recordStart, recordEnd } from "./agent/activity";
 
@@ -110,6 +111,14 @@ export async function curateGraph(
       aplicados += titulos.filter((t) => !note.body.includes(`[[${t}]]`)).length;
       await indexNote(written, scope).catch(() => {});
     }
+
+    // Bitácora (patrón log.md): registra la pasada de mantenimiento. Costo cero.
+    await appendLog(
+      scope,
+      "lint",
+      `curador ${apply ? "apply" : "dry-run"} — near-dups: ${near_duplicados.length}, ` +
+        `enlaces ${apply ? `aplicados: ${aplicados}` : `sugeridos: ${sugeridos}`}`
+    );
 
     return {
       apply,

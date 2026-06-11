@@ -34,6 +34,12 @@ export function mocId(scope: Scope): string {
   return scope.userId ? `_indice-user-${scope.userId}` : "_indice";
 }
 
+/** Id de la nota de bitácora (log) por ámbito. Nota de sistema ("_"): no se
+ *  indexa ni aparece en el grafo/índice. */
+export function logId(scope: Scope): string {
+  return scope.userId ? `_log-user-${scope.userId}` : "_log";
+}
+
 /** Scopes que un usuario puede leer: la empresarial de su empresa + su personal. */
 export function readableScopes(user: User): Scope[] {
   return [companyScope(user.company_id), personalScope(user.company_id, user.id)];
