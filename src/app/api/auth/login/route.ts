@@ -22,5 +22,7 @@ export async function GET() {
     maxAge: 600,
     path: "/",
   });
+  // Limpia el marcador de un intento "basic" anterior: cada login arranca full.
+  res.cookies.delete("auth_basic");
   return res;
 }

@@ -93,9 +93,11 @@ export default function ConfigPage() {
     <>
       <h1>Configuración</h1>
       <p className="subtitle">
-        Conecta tus fuentes de información. Los archivos que dejes en OneDrive (PDF,
-        Word, texto, Markdown) se digieren con Claude y se añaden como notas; el
-        original se mueve a <code>procesados</code> o <code>fallidos</code>.
+        Tus fuentes de información. Si inicias sesión con tu cuenta Microsoft 365,
+        OneDrive, Teams y SharePoint quedan conectados automáticamente: aquí solo
+        eliges qué carpetas y sitios sincronizar. Los archivos que dejes en OneDrive
+        (PDF, Word, texto, Markdown) se digieren con Claude y se añaden como notas;
+        el original se mueve a <code>procesados</code> o <code>fallidos</code>.
       </p>
 
       {banner && (
@@ -673,8 +675,8 @@ function ScopeDetail({
           <strong>⚠️ Reconecta OneDrive</strong>
           <p>
             El permiso de acceso expiró (tu organización ahora exige MFA), por eso
-            la sincronización automática está fallando. Vuelve a conectar para
-            reanudarla.
+            la sincronización automática está fallando. Cierra sesión y vuelve a
+            entrar con tu cuenta Microsoft, o reconecta aquí, para reanudarla.
           </p>
           {canManage && (
             <button

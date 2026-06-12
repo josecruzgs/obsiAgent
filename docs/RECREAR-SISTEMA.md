@@ -73,9 +73,14 @@ El **mismo** registro de app cubre el login SSO y la conexión a OneDrive/Teams.
    `Sites.Read.All`, `OnlineMeetings.Read`, `OnlineMeetingTranscript.Read.All`.
    Da **Grant admin consent**.
 
-> Scopes usados por el código: login = `openid profile email`; OneDrive personal =
-> `... User.Read Files.ReadWrite`; empresarial (incluye Teams) añade
-> `OnlineMeetings.Read OnlineMeetingTranscript.Read.All Sites.Read.All`.
+> Scopes usados por el código: login = todos los anteriores (identidad + Graph
+> con `offline_access`), así una sola autorización al iniciar sesión deja
+> OneDrive/Teams/SharePoint conectados y en `/config` solo se eligen carpetas y
+> sitios. Si la cuenta/tenant rechaza esos scopes (outlook.com personal o falta
+> de admin consent), el login reintenta solo con `openid profile email` y las
+> integraciones se conectan después desde `/config` (OneDrive personal =
+> `... User.Read Files.ReadWrite`; empresarial añade `OnlineMeetings.Read
+> OnlineMeetingTranscript.Read.All Sites.Read.All`).
 
 ---
 
