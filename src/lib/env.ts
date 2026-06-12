@@ -5,8 +5,25 @@
 // lanza, así `next build` funciona sin un .env completo. Una variable requerida
 // solo lanza cuando se accede a ella en tiempo de ejecución.
 
+// Overrides en memoria cargados desde la DB (tabla app_settings, editables en
+// /config). Tienen prioridad sobre process.env, así cada cliente puede meter sus
+// propias claves de API sin tocar el .env del servidor (que queda de fallback).
+// Ver src/lib/settings.ts (carga al arrancar vía src/instrumentation.ts).
+const overrides = new Map<string, string>();
+
+export function setEnvOverrides(values: Record<string, string>): void {
+  overrides.clear();
+  for (const [name, value] of Object.entries(values)) {
+    if (value && value.trim() !== "") overrides.set(name, value.trim());
+  }
+}
+
+function raw(name: string): string | undefined {
+  return overrides.get(name) ?? process.env[name];
+}
+
 function required(name: string): string {
-  const v = process.env[name];
+  const v = raw(name);
   if (!v || v.trim() === "") {
     throw new Error(`Falta la variable de entorno requerida: ${name}`);
   }
@@ -14,7 +31,7 @@ function required(name: string): string {
 }
 
 function optional(name: string, fallback = ""): string {
-  return process.env[name]?.trim() || fallback;
+  return raw(name)?.trim() || fallback;
 }
 
 export const env = {

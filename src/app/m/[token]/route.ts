@@ -28,6 +28,11 @@ export async function GET(
 
   const user = await getUserById(uid);
   if (!user) return fail("La cuenta ya no existe.");
+  // El acceso web por magic link es exclusivo de administradores; el resto de
+  // usuarios consulta solo por WhatsApp.
+  if (user.role !== "superadmin") {
+    return fail("El acceso a la web es solo para administradores.");
+  }
 
   const sessionToken = await signSession({
     uid: user.id,

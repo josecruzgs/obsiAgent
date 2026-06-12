@@ -6,10 +6,16 @@ import Anthropic from "@anthropic-ai/sdk";
 import { env } from "../env";
 import { recordStart, recordEnd } from "./activity";
 
-// Cliente perezoso (no instancia al importar; igual que claude.ts).
+// Cliente perezoso (no instancia al importar; igual que claude.ts). Se recrea
+// si la clave cambia (editable en /config).
 let _client: Anthropic | null = null;
+let _clientKey = "";
 function client(): Anthropic {
-  if (!_client) _client = new Anthropic({ apiKey: env.anthropicApiKey });
+  const apiKey = env.anthropicApiKey;
+  if (!_client || _clientKey !== apiKey) {
+    _client = new Anthropic({ apiKey });
+    _clientKey = apiKey;
+  }
   return _client;
 }
 

@@ -114,6 +114,101 @@ export async function sendPresence(
   }).catch(() => {}); // no es crítico
 }
 
+// ─── Gestión de la instancia (estado de conexión + QR), para /config ────────
+
+export type WhatsAppState =
+  | "open" // conectado a WhatsApp
+  | "connecting" // esperando que se escanee el QR
+  | "close" // instancia existe pero sin sesión
+  | "missing" // la instancia no existe en Evolution
+  | "unconfigured" // faltan EVOLUTION_API_URL / EVOLUTION_API_KEY
+  | "error";
+
+/** Estado de la instancia configurada. */
+export async function getConnectionState(): Promise<{
+  state: WhatsAppState;
+  detail?: string;
+}> {
+  const { url, apiKey, instance } = env.evolution;
+  if (!url || !apiKey) return { state: "unconfigured" };
+  try {
+    const res = await fetch(`${url}/instance/connectionState/${instance}`, {
+      headers: { apikey: apiKey },
+    });
+    if (res.status === 404) return { state: "missing" };
+    if (!res.ok) {
+      return {
+        state: "error",
+        detail: `Evolution ${res.status}: ${(await res.text()).slice(0, 200)}`,
+      };
+    }
+    const j = (await res.json()) as { instance?: { state?: string } };
+    const s = j.instance?.state;
+    if (s === "open") return { state: "open" };
+    if (s === "connecting") return { state: "connecting" };
+    return { state: "close" };
+  } catch (err) {
+    return { state: "error", detail: String(err) };
+  }
+}
+
+/** Pide un QR (o pairing code) para vincular la instancia. El QR caduca en
+ *  ~40 s; la UI debe refrescarlo periódicamente mientras no esté conectada. */
+export async function getQrCode(): Promise<{
+  base64?: string;
+  pairingCode?: string;
+  error?: string;
+}> {
+  const { url, apiKey, instance } = env.evolution;
+  if (!url || !apiKey) return { error: "Evolution API no configurada." };
+  const res = await fetch(`${url}/instance/connect/${instance}`, {
+    headers: { apikey: apiKey },
+  });
+  if (!res.ok) {
+    return { error: `Evolution ${res.status}: ${(await res.text()).slice(0, 200)}` };
+  }
+  // Si ya está conectada, /connect devuelve el estado en vez de un QR.
+  const j = (await res.json()) as { base64?: string; pairingCode?: string };
+  return { base64: j.base64, pairingCode: j.pairingCode };
+}
+
+/** Crea la instancia en Evolution (Baileys) con el webhook apuntando a esta app. */
+export async function createInstance(
+  webhookUrl: string
+): Promise<{ ok: boolean; error?: string }> {
+  const { url, apiKey, instance } = env.evolution;
+  if (!url || !apiKey) return { ok: false, error: "Evolution API no configurada." };
+  const res = await fetch(`${url}/instance/create`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: apiKey },
+    body: JSON.stringify({
+      instanceName: instance,
+      integration: "WHATSAPP-BAILEYS",
+      qrcode: true,
+      webhook: { url: webhookUrl, events: ["MESSAGES_UPSERT"] },
+    }),
+  });
+  if (!res.ok) {
+    return { ok: false, error: `Evolution ${res.status}: ${(await res.text()).slice(0, 300)}` };
+  }
+  return { ok: true };
+}
+
+/** Cierra la sesión de WhatsApp (desvincular). La instancia sigue existiendo;
+ *  se puede volver a vincular escaneando un QR nuevo. */
+export async function logoutInstance(): Promise<{ ok: boolean; error?: string }> {
+  const { url, apiKey, instance } = env.evolution;
+  if (!url || !apiKey) return { ok: false, error: "Evolution API no configurada." };
+  const res = await fetch(`${url}/instance/logout/${instance}`, {
+    method: "DELETE",
+    headers: { apikey: apiKey },
+  });
+  if (!res.ok) {
+    return { ok: false, error: `Evolution ${res.status}: ${(await res.text()).slice(0, 200)}` };
+  }
+  return { ok: true };
+}
+
 /** ¿Está permitido este número para consultar el vault? (allowlist) */
 export function isAllowed(number: string): boolean {
   const allowed = env.whatsappAllowedNumbers;

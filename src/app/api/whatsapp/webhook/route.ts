@@ -29,7 +29,9 @@ const CALL_REQUEST = /(ll[aá]mame|ll[aá]mar|llamada de voz|hablar por voz|quie
 // Reinicia el hilo de conversación (memoria de corto plazo).
 const RESET_REQUEST = /^(reiniciar|nueva conversaci[oó]n|olvida(?: todo)?|reset)\.?$/i;
 
-// Petición de acceso a la web sin credenciales (magic link).
+// Petición de acceso a la web sin credenciales (magic link). Solo aplica a
+// administradores: el login web es exclusivo de cuentas Microsoft 365 (admins);
+// el resto de usuarios consulta únicamente por WhatsApp.
 const LOGIN_REQUEST = /^(entrar|acceso|acceder|ingresar|login|inicia(?:r)? sesi[oó]n)\.?$/i;
 
 // uuid imposible: hace que el filtro "personal" no devuelva nada -> solo empresarial.
@@ -155,12 +157,12 @@ async function processMessage(msg: EvolutionMessage): Promise<void> {
     return;
   }
 
-  // Acceso a la web sin credenciales: manda un magic link al usuario de este número.
+  // Acceso a la web sin credenciales: manda un magic link, solo a administradores.
   if (LOGIN_REQUEST.test(text.trim())) {
-    if (!dbUser) {
+    if (!dbUser || dbUser.role !== "superadmin") {
       await sendToFirst(
         targets,
-        "Tu número no está vinculado a un usuario. Pídele al administrador que lo registre en /admin."
+        "El acceso a la web es solo para administradores. Por aquí puedo ayudarte con todas tus consultas 🙂"
       );
       return;
     }

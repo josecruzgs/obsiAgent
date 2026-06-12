@@ -40,8 +40,31 @@ interface SyncResult {
   };
 }
 
+// Estado de la instancia de WhatsApp (Evolution API). Ver /api/whatsapp/connection.
+type WaState = "open" | "connecting" | "close" | "missing" | "unconfigured" | "error";
+interface WaStatus {
+  state: WaState;
+  instance?: string;
+  qr?: string | null;
+  pairingCode?: string | null;
+  detail?: string;
+}
+
+// Una clave de API configurable (GET /api/settings; los secretos llegan enmascarados).
+interface SettingKey {
+  key: string;
+  label: string;
+  group: "ia" | "whatsapp" | "voz" | "microsoft";
+  secret: boolean;
+  placeholder?: string;
+  help?: string;
+  source: "db" | "env" | "none";
+  value: string;
+  hint: string;
+}
+
 type Kind = "company" | "personal";
-type Expandable = Kind | "sharepoint";
+type Expandable = Kind | "sharepoint" | "whatsapp";
 
 // Detecta errores que requieren volver a conectar (token inválido / MFA).
 function needsReauth(msg?: string): boolean {
@@ -65,17 +88,36 @@ const INTEGRATIONS = [
 const ONEDRIVE_LOGO = "/images/integ-onedrive.svg";
 const TEAMS_LOGO = "/images/integ-teams.svg";
 const SHAREPOINT_LOGO = "/images/integ-sharepoint.svg";
+const WHATSAPP_LOGO = "/images/integ-whatsapp.svg";
 
 export default function ConfigPage() {
   const [status, setStatus] = useState<Status | null>(null);
   const [banner, setBanner] = useState<{ kind: "ok" | "error"; msg: string } | null>(null);
   // Qué tarjeta está desplegada (panel de gestión abierto).
   const [expanded, setExpanded] = useState<Expandable | null>(null);
+  const [wa, setWa] = useState<WaStatus | null>(null);
+  // Modal de vinculación de WhatsApp (QR) abierto.
+  const [waModal, setWaModal] = useState(false);
 
   async function load() {
     const res = await fetch("/api/onedrive/status");
     if (res.ok) setStatus(await res.json());
   }
+
+  // Estado de WhatsApp: solo el superadmin puede consultarlo.
+  async function loadWa() {
+    if (!status?.isSuperadmin) return;
+    try {
+      const res = await fetch("/api/whatsapp/connection");
+      if (res.ok) setWa((await res.json()) as WaStatus);
+    } catch {
+      // sin red: se reintenta al refrescar
+    }
+  }
+  useEffect(() => {
+    loadWa();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status?.isSuperadmin]);
 
   useEffect(() => {
     load();
@@ -143,6 +185,13 @@ export default function ConfigPage() {
               expanded={expanded === "sharepoint"}
               onManage={() => toggle("sharepoint")}
             />
+            <WhatsAppTile
+              wa={wa}
+              canManage={status.isSuperadmin}
+              onVincular={() => setWaModal(true)}
+              onStatus={setWa}
+              setBanner={setBanner}
+            />
             {INTEGRATIONS.map((it) => (
               <div key={it.name} className="integration-card">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -175,7 +224,7 @@ export default function ConfigPage() {
               setBanner={setBanner}
               onClose={() => setExpanded(null)}
             />
-          ) : expanded && status[expanded].connected ? (
+          ) : expanded && expanded !== "whatsapp" && status[expanded].connected ? (
             <ScopeDetail
               kind={expanded}
               title={expanded === "company" ? "OneDrive empresarial" : "OneDrive personal"}
@@ -186,6 +235,21 @@ export default function ConfigPage() {
               onClose={() => setExpanded(null)}
             />
           ) : null}
+
+          {/* Claves de API: cada sistema usa las suyas (solo superadmin). */}
+          {status.isSuperadmin && <ApiKeysCard setBanner={setBanner} />}
+
+          {/* Modal de vinculación de WhatsApp (QR). */}
+          {waModal && (
+            <WhatsAppModal
+              onStatus={setWa}
+              setBanner={setBanner}
+              onClose={() => {
+                setWaModal(false);
+                loadWa();
+              }}
+            />
+          )}
         </>
       )}
     </>
@@ -771,6 +835,484 @@ function ScopeDetail({
             </p>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Tarjeta de WhatsApp (instancia de Evolution API) ───────────────────────
+// El botón abre el modal del QR (no conectado) o desconecta directo (conectado).
+function WhatsAppTile({
+  wa,
+  canManage,
+  onVincular,
+  onStatus,
+  setBanner,
+}: {
+  wa: WaStatus | null;
+  canManage: boolean;
+  onVincular: () => void;
+  onStatus: (wa: WaStatus) => void;
+  setBanner: (b: { kind: "ok" | "error"; msg: string } | null) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const connected = wa?.state === "open";
+
+  let status: React.ReactNode;
+  if (!canManage) status = <span className="integration-status muted">—</span>;
+  else if (!wa) status = <span className="integration-status muted">…</span>;
+  else if (connected)
+    status = <span className="integration-status ok">✓ Conectado</span>;
+  else if (wa.state === "connecting")
+    status = <span className="integration-status warn">Escanea el QR</span>;
+  else if (wa.state === "unconfigured")
+    status = <span className="integration-status muted">Falta configurar</span>;
+  else if (wa.state === "error")
+    status = <span className="integration-status warn">⚠️ Error</span>;
+  else status = <span className="integration-status muted">No vinculado</span>;
+
+  async function disconnect() {
+    if (
+      !confirm(
+        "¿Desconectar WhatsApp? El agente dejará de responder hasta vincular un número de nuevo."
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/whatsapp/connection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "logout" }),
+      });
+      const d = await res.json();
+      if (d.ok) {
+        onStatus(d as WaStatus);
+        setBanner({ kind: "ok", msg: "WhatsApp desconectado." });
+      } else {
+        setBanner({ kind: "error", msg: d.error || "Error con Evolution API." });
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="integration-card">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={WHATSAPP_LOGO} alt="WhatsApp" className="integration-logo" />
+      <strong>WhatsApp</strong>
+      {status}
+      {canManage ? (
+        connected ? (
+          <button
+            type="button"
+            className="secondary"
+            onClick={disconnect}
+            disabled={busy}
+          >
+            {busy ? "…" : "Desconectar"}
+          </button>
+        ) : (
+          <button type="button" onClick={onVincular}>
+            Conectar
+          </button>
+        )
+      ) : (
+        <span className="integration-status muted" style={{ fontSize: 11 }}>
+          Lo gestiona el superadmin
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ─── Modal de WhatsApp: muestra el QR de Evolution para escanear ─────────────
+function WhatsAppModal({
+  onStatus,
+  setBanner,
+  onClose,
+}: {
+  onStatus: (wa: WaStatus) => void;
+  setBanner: (b: { kind: "ok" | "error"; msg: string } | null) => void;
+  onClose: () => void;
+}) {
+  const [data, setData] = useState<WaStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function refresh() {
+    try {
+      const res = await fetch("/api/whatsapp/connection?qr=1");
+      if (!res.ok) return;
+      const d = (await res.json()) as WaStatus;
+      setData(d);
+      onStatus(d);
+      // Si quedó vinculado mientras el modal estaba abierto, avisa y cierra.
+      if (d.state === "open") {
+        setBanner({ kind: "ok", msg: "✓ WhatsApp vinculado correctamente." });
+        onClose();
+      }
+    } catch {
+      // sin red: se reintenta en el siguiente tick
+    }
+  }
+
+  useEffect(() => {
+    refresh();
+    // El QR de Evolution caduca en ~40 s: se refresca solo mientras el modal
+    // esté abierto (también detecta cuando ya quedó vinculado).
+    const t = setInterval(refresh, 20000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Cierra con Escape.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function createInstance() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/whatsapp/connection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create" }),
+      });
+      const d = await res.json();
+      if (d.ok) {
+        setData(d as WaStatus);
+        onStatus(d as WaStatus);
+      } else {
+        setBanner({ kind: "error", msg: d.error || "Error con Evolution API." });
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const qrSrc = data?.qr
+    ? data.qr.startsWith("data:")
+      ? data.qr
+      : `data:image/png;base64,${data.qr}`
+    : null;
+
+  let body: React.ReactNode;
+  if (!data) {
+    body = <p className="muted">Consultando Evolution API…</p>;
+  } else if (data.state === "unconfigured") {
+    body = (
+      <p className="muted">
+        Primero configura la <strong>URL</strong> y la <strong>API key</strong> de
+        Evolution API en la sección <strong>Claves de API</strong> (más abajo en
+        esta página) y vuelve a intentar.
+      </p>
+    );
+  } else if (data.state === "error") {
+    body = (
+      <p className="error">
+        ✗ No se pudo contactar a Evolution API. Revisa la URL/API key en Claves de
+        API.
+        {data.detail ? ` (${data.detail})` : ""}
+      </p>
+    );
+  } else if (data.state === "missing") {
+    body = (
+      <>
+        <p className="muted">
+          La instancia <code>{data.instance}</code> aún no existe en tu Evolution
+          API. Créala aquí: quedará lista con el webhook apuntando a esta app y te
+          mostrará el QR.
+        </p>
+        <button
+          type="button"
+          onClick={createInstance}
+          disabled={busy}
+          style={{ marginTop: 14 }}
+        >
+          {busy ? "Creando…" : "Crear instancia y generar QR"}
+        </button>
+      </>
+    );
+  } else {
+    // close / connecting → mostrar el QR
+    body = (
+      <>
+        <p className="muted" style={{ fontSize: 13 }}>
+          En tu teléfono abre <strong>WhatsApp → Ajustes → Dispositivos vinculados →
+          Vincular un dispositivo</strong> y escanea este código.
+        </p>
+        {qrSrc ? (
+          <div style={{ textAlign: "center", marginTop: 6 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={qrSrc}
+              alt="QR para vincular WhatsApp"
+              style={{
+                width: 260,
+                height: 260,
+                background: "#fff",
+                padding: 12,
+                borderRadius: 12,
+              }}
+            />
+            {data.pairingCode && (
+              <p className="muted" style={{ marginTop: 10, fontSize: 13 }}>
+                O ingresa este código en tu teléfono:{" "}
+                <code>{data.pairingCode}</code>
+              </p>
+            )}
+            <p className="muted" style={{ marginTop: 10, fontSize: 12 }}>
+              El código se renueva solo cada pocos segundos. En cuanto vincules, esta
+              ventana se cierra sola.
+            </p>
+          </div>
+        ) : (
+          <p className="muted" style={{ marginTop: 10 }}>
+            Generando QR…{data.detail ? ` (${data.detail})` : ""}
+          </p>
+        )}
+        <button
+          type="button"
+          className="secondary"
+          onClick={refresh}
+          disabled={busy}
+          style={{ marginTop: 14 }}
+        >
+          Actualizar QR
+        </button>
+      </>
+    );
+  }
+
+  return (
+    <div
+      className="modal-backdrop"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="modal-card" role="dialog" aria-modal="true">
+        <div className="integration-detail-head">
+          <h2 className="card-title" style={{ margin: 0 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={WHATSAPP_LOGO}
+              alt=""
+              className="integration-logo"
+              style={{ width: 24, height: 24 }}
+            />
+            Vincular WhatsApp
+          </h2>
+          <button type="button" className="secondary" onClick={onClose}>
+            Cerrar
+          </button>
+        </div>
+        <div style={{ marginTop: 14 }}>{body}</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Claves de API (solo superadmin): cada sistema usa las suyas ─────────────
+const GROUP_META: Record<
+  SettingKey["group"],
+  { title: string; icon: string; desc: string }
+> = {
+  ia: {
+    title: "Inteligencia artificial",
+    icon: "🧠",
+    desc: "Claude, embeddings y voz (Whisper).",
+  },
+  whatsapp: {
+    title: "WhatsApp",
+    icon: "💬",
+    desc: "Conexión con tu servidor Evolution API.",
+  },
+  voz: {
+    title: "Agente de voz",
+    icon: "📞",
+    desc: "Retell AI para llamadas (opcional).",
+  },
+  microsoft: {
+    title: "Microsoft Entra",
+    icon: "🪟",
+    desc: "Login y OneDrive / Teams / SharePoint.",
+  },
+};
+const GROUP_ORDER: SettingKey["group"][] = ["ia", "whatsapp", "voz", "microsoft"];
+
+function ApiKeysCard({
+  setBanner,
+}: {
+  setBanner: (b: { kind: "ok" | "error"; msg: string } | null) => void;
+}) {
+  const [keys, setKeys] = useState<SettingKey[] | null>(null);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.keys && setKeys(d.keys))
+      .catch(() => {});
+  }, []);
+
+  // Solo se envían los campos que el usuario realmente escribió.
+  const dirty = Object.entries(draft).filter(([, v]) => v.trim() !== "");
+
+  async function post(values: Record<string, string | null>, okMsg: string) {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ values }),
+      });
+      const d = await res.json();
+      if (d.ok) {
+        setKeys(d.keys);
+        setDraft({});
+        setBanner({ kind: "ok", msg: okMsg });
+      } else {
+        setBanner({ kind: "error", msg: d.error || "No se pudo guardar." });
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function save() {
+    if (dirty.length === 0) return;
+    post(
+      Object.fromEntries(dirty.map(([k, v]) => [k, v.trim()])),
+      "Claves guardadas. Aplican de inmediato (sin reiniciar)."
+    );
+  }
+
+  function sourceBadge(k: SettingKey) {
+    if (k.source === "db")
+      return (
+        <span className="integration-status ok" style={{ marginLeft: 8 }}>
+          Guardada aquí{k.hint ? ` · ${k.hint}` : ""}
+        </span>
+      );
+    if (k.source === "env")
+      return (
+        <span className="integration-status muted" style={{ marginLeft: 8 }}>
+          Del servidor{k.hint ? ` · ${k.hint}` : ""}
+        </span>
+      );
+    return (
+      <span className="integration-status muted" style={{ marginLeft: 8 }}>
+        No configurada
+      </span>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 18 }}>
+      <h2 style={{ margin: "0 0 4px" }}>Claves de API</h2>
+      <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
+        Pega aquí las claves de cada servicio. Se guardan en la base de datos y
+        aplican al instante; si un campo queda vacío, se usa la clave del servidor
+        (.env). Los secretos solo se muestran por sus últimos 4 caracteres.
+      </p>
+
+      {!keys ? (
+        <p className="muted">Cargando…</p>
+      ) : (
+        <>
+          <div className="apikeys-grid">
+            {GROUP_ORDER.map((g) => {
+              const items = keys.filter((k) => k.group === g);
+              if (items.length === 0) return null;
+              const meta = GROUP_META[g];
+              return (
+                <div key={g} className="card apikey-card">
+                  <div className="apikey-card-head">
+                    <span className="apikey-card-icon" aria-hidden>
+                      {meta.icon}
+                    </span>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: 15 }}>{meta.title}</h3>
+                      <p className="muted" style={{ margin: 0, fontSize: 12 }}>
+                        {meta.desc}
+                      </p>
+                    </div>
+                  </div>
+
+                  {g === "microsoft" && (
+                    <p className="error" style={{ fontSize: 12, margin: "10px 0 0" }}>
+                      ⚠️ También se usan para iniciar sesión: un valor incorrecto
+                      puede dejar la app sin acceso. Cámbialas solo si sabes lo que
+                      haces.
+                    </p>
+                  )}
+
+                  {items.map((k) => (
+                    <div key={k.key} style={{ marginTop: 14 }}>
+                      <label style={{ display: "flex", flexWrap: "wrap", alignItems: "center" }}>
+                        {k.label}
+                        {sourceBadge(k)}
+                      </label>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                          type={k.secret ? "password" : "text"}
+                          autoComplete="new-password"
+                          value={draft[k.key] ?? (k.secret ? "" : k.value)}
+                          onChange={(e) =>
+                            setDraft((d) => ({ ...d, [k.key]: e.target.value }))
+                          }
+                          placeholder={
+                            k.secret && k.hint
+                              ? "Pega una clave nueva para reemplazar la actual"
+                              : k.placeholder || ""
+                          }
+                          style={{ flex: 1, minWidth: 0 }}
+                        />
+                        {k.source === "db" && (
+                          <button
+                            type="button"
+                            className="secondary"
+                            onClick={() =>
+                              post(
+                                { [k.key]: null },
+                                "Clave quitada; vuelve a usarse la del servidor (si existe)."
+                              )
+                            }
+                            disabled={saving}
+                          >
+                            Quitar
+                          </button>
+                        )}
+                      </div>
+                      {k.help && (
+                        <p className="muted" style={{ marginTop: 4, fontSize: 12 }}>
+                          {k.help}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ marginTop: 6, marginBottom: 18 }}>
+            <button type="button" onClick={save} disabled={saving || dirty.length === 0}>
+              {saving ? "Guardando…" : "Guardar cambios"}
+            </button>
+            {dirty.length > 0 && (
+              <span className="muted" style={{ marginLeft: 10, fontSize: 12 }}>
+                {dirty.length} cambio(s) sin guardar
+              </span>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
