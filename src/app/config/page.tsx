@@ -77,12 +77,7 @@ function needsReauth(msg?: string): boolean {
 // Integraciones futuras (por ahora solo visuales). Sustituye los logos en
 // /public/images cuando se implementen.
 const INTEGRATIONS = [
-  { name: "Google Drive", logo: "/images/integ-drive.svg" },
-  { name: "Google Meet", logo: "/images/integ-meet.svg" },
-  { name: "Dropbox", logo: "/images/integ-dropbox.svg" },
   { name: "PLAUD", logo: "/images/integ-plaud.svg" },
-  { name: "Notion", logo: "/images/integ-notion.svg" },
-  { name: "Slack", logo: "/images/integ-slack.svg" },
 ];
 
 const ONEDRIVE_LOGO = "/images/integ-onedrive.svg";

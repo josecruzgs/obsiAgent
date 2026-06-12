@@ -91,14 +91,12 @@ export const SETTING_DEFS: SettingDef[] = [
     label: "Microsoft Entra — Client secret",
     group: "microsoft",
     secret: true,
+    help: "Se renueva en Entra → Certificados y secretos cuando caduca.",
   },
-  {
-    key: "MS_TENANT_ID",
-    label: "Microsoft Entra — Tenant ID (opcional)",
-    group: "microsoft",
-    secret: false,
-    help: "Solo para transcripciones de Teams (token app-only).",
-  },
+  // MS_TENANT_ID no se incluye a propósito: la app lo captura por sí sola del
+  // usuario al iniciar sesión (claim `tid`, guardado en onedrive_connections.
+  // tenant_id) y el login va por el endpoint /common. El valor del .env no se
+  // usa, así que mostrarlo aquí solo confundiría.
 ];
 
 const PREFIX = "env:";
