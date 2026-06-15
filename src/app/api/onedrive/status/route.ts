@@ -4,8 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/currentUser";
 import { authErrorResponse } from "@/lib/adminAuth";
-import { getConnection, upsertConnection } from "@/lib/connections";
-import { companyScope, personalScope, type Scope } from "@/lib/scope";
+import { getConnection, upsertConnection, connKey } from "@/lib/connections";
 import type { OneDriveConnection } from "@/lib/connections";
 
 export const runtime = "nodejs";
@@ -36,8 +35,8 @@ export async function GET() {
   try {
     const user = await requireUser();
     const [company, personal] = await Promise.all([
-      getConnection(companyScope(user.company_id)),
-      getConnection(personalScope(user.company_id, user.id)),
+      getConnection(connKey(user.company_id, user.id, "company")),
+      getConnection(connKey(user.company_id, user.id, "personal")),
     ]);
     return NextResponse.json({
       isSuperadmin: user.role === "superadmin",
@@ -68,12 +67,11 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
-    const scope: Scope =
-      kind === "company"
-        ? companyScope(user.company_id)
-        : personalScope(user.company_id, user.id);
     const clean = folder.replace(/^\/+|\/+$/g, "");
-    const conn = await upsertConnection(scope, { folder: clean });
+    const conn = await upsertConnection(
+      connKey(user.company_id, user.id, kind),
+      { folder: clean }
+    );
     return NextResponse.json({ ok: true, folder: conn.folder });
   } catch (err) {
     const a = authErrorResponse(err);

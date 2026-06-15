@@ -4,8 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { exchangeCode, getAccount, identityFromToken } from "@/lib/onedrive";
 import { getCurrentUser } from "@/lib/currentUser";
-import { upsertConnection } from "@/lib/connections";
-import { companyScope, personalScope } from "@/lib/scope";
+import { upsertConnection, connKey } from "@/lib/connections";
 
 export const runtime = "nodejs";
 
@@ -40,11 +39,7 @@ export async function GET(req: NextRequest) {
     }
     const account = await getAccount(tok.access_token).catch(() => "");
     const { tenantId, userId } = identityFromToken(tok); // tid + oid (para Teams)
-    const scope =
-      scopeKind === "company"
-        ? companyScope(user.company_id)
-        : personalScope(user.company_id, user.id);
-    await upsertConnection(scope, {
+    await upsertConnection(connKey(user.company_id, user.id, scopeKind), {
       refresh_token: tok.refresh_token,
       account,
       tenant_id: tenantId ?? null,

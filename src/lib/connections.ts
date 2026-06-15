@@ -1,9 +1,23 @@
-// Conexiones a OneDrive por ámbito (empresarial o personal), persistidas en la
-// tabla onedrive_connections. Maneja el refresh token y su rotación.
+// Conexiones a Microsoft (OneDrive/Teams/SharePoint) persistidas en la tabla
+// onedrive_connections. Cada conexión la posee el usuario que la conectó y tiene
+// un `target` que decide a qué base de conocimiento alimenta:
+//   - target='company'  -> cuenta de TRABAJO: notas del vault empresarial compartido
+//     (owner null). Varios admins pueden tener una cada uno; todas alimentan el mismo vault.
+//   - target='personal' -> OneDrive personal del usuario: su bóveda privada.
+// Maneja el refresh token y su rotación.
 import { query } from "./db";
 import { ensureTenancy } from "./tenancy";
 import { refreshAccessToken } from "./onedrive";
-import type { Scope } from "./scope";
+import { companyScope, personalScope, type Scope } from "./scope";
+
+export type ConnTarget = "company" | "personal";
+
+/** Identifica una conexión: a qué empresa, qué usuario la posee y qué alimenta. */
+export interface ConnKey {
+  companyId: string;
+  ownerUserId: string;
+  target: ConnTarget;
+}
 
 export interface SyncSummary {
   at: string;
@@ -12,7 +26,7 @@ export interface SyncSummary {
   error?: string;
 }
 
-// Config de SharePoint adjunta a la conexión EMPRESARIAL (misma cuenta de trabajo).
+// Config de SharePoint adjunta a la conexión de TRABAJO (misma cuenta M365).
 // Vacío/null = SharePoint no configurado.
 export interface SharePointConfig {
   siteUrl: string; // https://host/sites/Equipo
@@ -24,7 +38,8 @@ export interface SharePointConfig {
 export interface OneDriveConnection {
   id: string;
   company_id: string;
-  owner_user_id: string | null;
+  owner_user_id: string; // usuario que conectó la cuenta
+  target: ConnTarget; // 'company' (vault compartido) | 'personal' (bóveda privada)
   refresh_token: string | null;
   account: string | null;
   folder: string;
@@ -32,7 +47,7 @@ export interface OneDriveConnection {
   tenant_id: string | null; // tid de Microsoft (para Teams app-only)
   ms_user_id: string | null; // oid/GUID del usuario (organizador de reuniones)
   teams_since: Date | null; // corte: solo grabaciones creadas después de esta marca
-  sharepoint: SharePointConfig | null; // config de SharePoint (solo empresarial)
+  sharepoint: SharePointConfig | null; // config de SharePoint (solo target='company')
 }
 
 export interface ConnectionPatch {
@@ -47,26 +62,44 @@ export interface ConnectionPatch {
 }
 
 const COLS =
-  "id, company_id, owner_user_id, refresh_token, account, folder, last_sync, tenant_id, ms_user_id, teams_since, sharepoint";
+  "id, company_id, owner_user_id, target, refresh_token, account, folder, last_sync, tenant_id, ms_user_id, teams_since, sharepoint";
+
+/** Key de la conexión de un usuario para un destino dado. */
+export function connKey(
+  companyId: string,
+  ownerUserId: string,
+  target: ConnTarget
+): ConnKey {
+  return { companyId, ownerUserId, target };
+}
+
+/** Key a partir de una conexión existente. */
+export function keyOfConnection(conn: OneDriveConnection): ConnKey {
+  return {
+    companyId: conn.company_id,
+    ownerUserId: conn.owner_user_id,
+    target: conn.target,
+  };
+}
 
 export async function getConnection(
-  scope: Scope
+  key: ConnKey
 ): Promise<OneDriveConnection | null> {
   await ensureTenancy();
   const rows = await query<OneDriveConnection>(
     `select ${COLS} from onedrive_connections
-     where company_id = $1 and owner_user_id is not distinct from $2`,
-    [scope.companyId, scope.userId]
+     where owner_user_id = $1 and target = $2`,
+    [key.ownerUserId, key.target]
   );
   return rows[0] ?? null;
 }
 
 export async function upsertConnection(
-  scope: Scope,
+  key: ConnKey,
   patch: ConnectionPatch
 ): Promise<OneDriveConnection> {
   await ensureTenancy();
-  const cur = await getConnection(scope);
+  const cur = await getConnection(key);
   const pick = <T>(v: T | undefined, fallback: T | null | undefined): T | null =>
     v !== undefined ? v : fallback ?? null;
 
@@ -87,23 +120,23 @@ export async function upsertConnection(
          set refresh_token = $3, account = $4, folder = $5, last_sync = $6,
              tenant_id = $7, ms_user_id = $8, teams_since = $9, sharepoint = $10,
              updated_at = now()
-       where company_id = $1 and owner_user_id is not distinct from $2`,
-      [scope.companyId, scope.userId, refresh, account, folder, lastSyncJson, tenantId, msUserId, teamsSince, sharepointJson]
+       where owner_user_id = $1 and target = $2`,
+      [key.ownerUserId, key.target, refresh, account, folder, lastSyncJson, tenantId, msUserId, teamsSince, sharepointJson]
     );
   } else {
     await query(
       `insert into onedrive_connections
-         (company_id, owner_user_id, refresh_token, account, folder, last_sync, tenant_id, ms_user_id, teams_since, sharepoint)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-      [scope.companyId, scope.userId, refresh, account, folder, lastSyncJson, tenantId, msUserId, teamsSince, sharepointJson]
+         (company_id, owner_user_id, target, refresh_token, account, folder, last_sync, tenant_id, ms_user_id, teams_since, sharepoint)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      [key.companyId, key.ownerUserId, key.target, refresh, account, folder, lastSyncJson, tenantId, msUserId, teamsSince, sharepointJson]
     );
   }
-  return (await getConnection(scope))!;
+  return (await getConnection(key))!;
 }
 
 /** Olvida credenciales (mantiene la carpeta elegida). */
-export async function disconnect(scope: Scope): Promise<void> {
-  await upsertConnection(scope, {
+export async function disconnect(key: ConnKey): Promise<void> {
+  await upsertConnection(key, {
     refresh_token: null,
     account: null,
     last_sync: null,
@@ -118,19 +151,22 @@ export async function listConnectedConnections(): Promise<OneDriveConnection[]> 
   );
 }
 
-/** Access token válido para un scope, rotando y persistiendo el refresh token.
- *  La conexión EMPRESARIAL (userId null) usa scopes "full" (incluye Teams). */
-export async function getAccessToken(scope: Scope): Promise<string> {
-  const conn = await getConnection(scope);
+/** Access token válido para una conexión, rotando y persistiendo el refresh token.
+ *  La conexión de TRABAJO (target='company') usa scopes "full" (incluye Teams). */
+export async function getAccessToken(key: ConnKey): Promise<string> {
+  const conn = await getConnection(key);
   if (!conn?.refresh_token) throw new Error("OneDrive no está conectado.");
-  const full = scope.userId === null;
+  const full = key.target === "company";
   const tok = await refreshAccessToken(conn.refresh_token, full);
   if (tok.refresh_token && tok.refresh_token !== conn.refresh_token) {
-    await upsertConnection(scope, { refresh_token: tok.refresh_token });
+    await upsertConnection(key, { refresh_token: tok.refresh_token });
   }
   return tok.access_token;
 }
 
+/** Base de conocimiento a la que alimenta una conexión. */
 export function scopeOfConnection(conn: OneDriveConnection): Scope {
-  return { companyId: conn.company_id, userId: conn.owner_user_id };
+  return conn.target === "company"
+    ? companyScope(conn.company_id)
+    : personalScope(conn.company_id, conn.owner_user_id);
 }

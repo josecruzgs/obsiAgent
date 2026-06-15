@@ -101,18 +101,45 @@ async function run(): Promise<void> {
   await query(
     `alter table onedrive_connections add column if not exists teams_since timestamptz`
   );
-  // Config de SharePoint adjunta a la conexión empresarial (sitio + carpeta).
+  // Config de SharePoint adjunta a la conexión de trabajo (sitio + carpeta).
   await query(
     `alter table onedrive_connections add column if not exists sharepoint jsonb`
   );
-  // Una sola conexión empresarial por empresa, y una personal por usuario.
+
+  // Cada conexión alimenta una base de conocimiento: 'company' (vault compartido,
+  // notas con owner null) o 'personal' (bóveda privada del dueño). Antes la
+  // conexión empresarial era única por empresa (owner null); ahora cada admin
+  // tiene su propia conexión de trabajo (target='company') y todas alimentan el
+  // mismo vault compartido.
   await query(
-    `create unique index if not exists onedrive_conn_company_uidx
-       on onedrive_connections (company_id) where owner_user_id is null`
+    `alter table onedrive_connections add column if not exists target text not null default 'personal'`
   );
+  // Índices viejos (una empresarial por empresa, una por usuario) -> nuevo esquema:
+  // una conexión por (dueño, target). IMPORTANTE: hay que soltarlos ANTES del UPDATE
+  // de abajo, porque al reasignar la conexión empresarial a su admin dueño ese admin
+  // pasa a tener 2 filas con el mismo owner_user_id (trabajo + personal), lo que viola
+  // el viejo índice `onedrive_conn_user_uidx` (único por usuario).
+  await query(`drop index if exists onedrive_conn_company_uidx`);
+  await query(`drop index if exists onedrive_conn_user_uidx`);
+  // Migra la antigua conexión empresarial (owner null) a target='company' y le
+  // asigna dueño: el usuario cuya cuenta coincide, o el superadmin de la empresa.
   await query(
-    `create unique index if not exists onedrive_conn_user_uidx
-       on onedrive_connections (owner_user_id) where owner_user_id is not null`
+    `update onedrive_connections c
+        set target = 'company',
+            owner_user_id = coalesce(
+              (select u.id from users u
+                 where lower(u.email) = lower(c.account) and u.company_id = c.company_id
+                 limit 1),
+              (select u.id from users u
+                 where u.company_id = c.company_id and u.role = 'superadmin'
+                 order by u.created_at limit 1)
+            )
+      where owner_user_id is null`
+  );
+  // Nuevo índice: una conexión por (dueño, target). Un admin puede tener trabajo + personal.
+  await query(
+    `create unique index if not exists onedrive_conn_owner_target_uidx
+       on onedrive_connections (owner_user_id, target)`
   );
 
   await seed();
@@ -154,32 +181,44 @@ async function seed(): Promise<void> {
     company.id,
   ]);
 
-  // Migra la conexión OneDrive single-tenant (app_settings.onedrive) a conexión
-  // EMPRESARIAL. app_settings puede no existir todavía -> se ignora el error.
+  // Migra la conexión OneDrive single-tenant (app_settings.onedrive) a la conexión
+  // de TRABAJO (target='company') del superadmin sembrado. app_settings puede no
+  // existir todavía -> se ignora el error.
   try {
     const old = await query<{ value: OldOneDrive }>(
       `select value from app_settings where key = 'onedrive'`
     );
     const v = old[0]?.value;
     if (v?.refreshToken) {
-      const has = await query(
-        `select 1 from onedrive_connections where company_id = $1 and owner_user_id is null`,
-        [company.id]
-      );
-      if (has.length === 0) {
-        await query(
-          `insert into onedrive_connections (company_id, owner_user_id, refresh_token, account, folder, last_sync)
-           values ($1, null, $2, $3, $4, $5)`,
-          [
-            company.id,
-            v.refreshToken,
-            v.account ?? null,
-            v.folder ?? "ObsiAgent",
-            v.lastSync ? JSON.stringify(v.lastSync) : null,
-          ]
+      const sa = (
+        await query<{ id: string }>(
+          `select id from users where company_id = $1 and role = 'superadmin'
+           order by created_at limit 1`,
+          [company.id]
+        )
+      )[0];
+      if (sa) {
+        const has = await query(
+          `select 1 from onedrive_connections
+            where owner_user_id = $1 and target = 'company'`,
+          [sa.id]
         );
+        if (has.length === 0) {
+          await query(
+            `insert into onedrive_connections (company_id, owner_user_id, target, refresh_token, account, folder, last_sync)
+             values ($1, $2, 'company', $3, $4, $5, $6)`,
+            [
+              company.id,
+              sa.id,
+              v.refreshToken,
+              v.account ?? null,
+              v.folder ?? "ObsiAgent",
+              v.lastSync ? JSON.stringify(v.lastSync) : null,
+            ]
+          );
+        }
+        await query(`delete from app_settings where key = 'onedrive'`);
       }
-      await query(`delete from app_settings where key = 'onedrive'`);
     }
   } catch {
     /* app_settings no existe o no hay nada que migrar */

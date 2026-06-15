@@ -3,8 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/currentUser";
 import { authErrorResponse } from "@/lib/adminAuth";
-import { disconnect } from "@/lib/connections";
-import { companyScope, personalScope } from "@/lib/scope";
+import { disconnect, connKey } from "@/lib/connections";
 
 export const runtime = "nodejs";
 
@@ -20,11 +19,7 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
-    await disconnect(
-      kind === "company"
-        ? companyScope(user.company_id)
-        : personalScope(user.company_id, user.id)
-    );
+    await disconnect(connKey(user.company_id, user.id, kind));
     return NextResponse.json({ ok: true });
   } catch (err) {
     return (

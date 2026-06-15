@@ -6,11 +6,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isImportAuthorized } from "@/lib/importAuth";
 import { getCurrentUser } from "@/lib/currentUser";
-import { listConnectedConnections } from "@/lib/connections";
-import { companyScope, personalScope } from "@/lib/scope";
+import { listConnectedConnections, connKey } from "@/lib/connections";
 import {
   runTeamsSyncForConnection,
-  runTeamsSyncForScope,
+  runTeamsSyncForConnKey,
   teamsEligible,
 } from "@/lib/teamsSync";
 
@@ -23,7 +22,7 @@ export async function POST(req: NextRequest) {
     const conns = (await listConnectedConnections()).filter(teamsEligible);
     const resultados = [];
     for (const conn of conns) {
-      const ambito = conn.owner_user_id ? "personal" : "empresarial";
+      const ambito = conn.target === "company" ? "empresarial" : "personal";
       try {
         const r = await runTeamsSyncForConnection(conn);
         resultados.push({ ambito, cuenta: conn.account, ...r });
@@ -52,15 +51,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const scope =
-    kind === "company"
-      ? companyScope(user.company_id)
-      : personalScope(user.company_id, user.id);
-
   const backfill = Math.max(0, Number(new URL(req.url).searchParams.get("backfill")) || 0);
 
   try {
-    const r = await runTeamsSyncForScope(scope, backfill ? { backfill } : {});
+    const r = await runTeamsSyncForConnKey(
+      connKey(user.company_id, user.id, kind),
+      backfill ? { backfill } : {}
+    );
     return NextResponse.json({ ok: true, ...r });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

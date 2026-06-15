@@ -14,6 +14,7 @@ import {
   getAccessToken,
   upsertConnection,
   scopeOfConnection,
+  keyOfConnection,
   type OneDriveConnection,
 } from "./connections";
 import { extractTextFromBuffer } from "./extract";
@@ -132,6 +133,7 @@ async function ingestFolder(token: string, opts: IngestOpts): Promise<SyncResult
 // ─── OneDrive (drive del usuario) ──────────────────────────────────────────
 export async function runSync(conn: OneDriveConnection): Promise<SyncResult> {
   const scope = scopeOfConnection(conn);
+  const key = keyOfConnection(conn);
   recordStart("onedrive");
   const ingeridos: string[] = [];
   try {
@@ -139,10 +141,10 @@ export async function runSync(conn: OneDriveConnection): Promise<SyncResult> {
     // el error en last_sync para que /config muestre "reconecta", y relanzamos.
     let token: string;
     try {
-      token = await getAccessToken(scope);
+      token = await getAccessToken(key);
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
-      await upsertConnection(scope, {
+      await upsertConnection(key, {
         last_sync: { at: new Date().toISOString(), ok: 0, failed: 0, error },
       }).catch(() => {});
       throw err;
@@ -152,14 +154,16 @@ export async function runSync(conn: OneDriveConnection): Promise<SyncResult> {
       scope,
       driveBase: "/me/drive",
       folder: conn.folder,
-      extIdPrefix: "file:",
+      // Dedup por cuenta: varios admins pueden tener archivos homónimos en su
+      // OneDrive sin pisarse en el vault compartido.
+      extIdPrefix: `file:${conn.account ?? conn.owner_user_id}:`,
       sourceLabel: "onedrive",
       moveProcessed: true,
     });
     ingeridos.push(...res.detalle.procesados.map((p) => p.archivo));
 
     await rebuildMoc(scope).catch((e) => console.error("[onedrive] rebuildMoc:", e));
-    await upsertConnection(scope, {
+    await upsertConnection(key, {
       last_sync: {
         at: new Date().toISOString(),
         ok: res.procesados,
@@ -176,25 +180,27 @@ export async function runSync(conn: OneDriveConnection): Promise<SyncResult> {
 export async function runSharePointSync(conn: OneDriveConnection): Promise<SyncResult> {
   const sp = conn.sharepoint;
   if (!sp?.siteUrl) throw new Error("SharePoint no está configurado.");
-  const scope = scopeOfConnection(conn); // empresarial
+  const scope = scopeOfConnection(conn); // vault compartido (cuenta de trabajo)
+  const key = keyOfConnection(conn);
   recordStart("sharepoint");
   const ingeridos: string[] = [];
   try {
-    const token = await getAccessToken(scope);
+    const token = await getAccessToken(key);
     const drive = await resolveSharePointDrive(token, sp.siteUrl);
 
     const res = await ingestFolder(token, {
       scope,
       driveBase: `/drives/${drive.driveId}`,
       folder: sp.folder || "",
-      extIdPrefix: "sp:",
+      // Dedup por cuenta: distintos sitios/carpetas de admins no se pisan.
+      extIdPrefix: `sp:${conn.account ?? conn.owner_user_id}:`,
       sourceLabel: "sharepoint",
       moveProcessed: false,
     });
     ingeridos.push(...res.detalle.procesados.map((p) => p.archivo));
 
     await rebuildMoc(scope).catch((e) => console.error("[sharepoint] rebuildMoc:", e));
-    await upsertConnection(scope, {
+    await upsertConnection(key, {
       sharepoint: {
         ...sp,
         siteName: drive.siteName,
@@ -208,7 +214,7 @@ export async function runSharePointSync(conn: OneDriveConnection): Promise<SyncR
     return res;
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
-    await upsertConnection(scope, {
+    await upsertConnection(key, {
       sharepoint: { ...sp, lastSync: { at: new Date().toISOString(), ok: 0, failed: 0, error } },
     }).catch(() => {});
     throw err;

@@ -2,8 +2,7 @@
 // hacia el ámbito EMPRESARIAL. Solo superadmin (la conexión es de la empresa).
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
-import { getConnection } from "@/lib/connections";
-import { companyScope } from "@/lib/scope";
+import { getConnection, connKey } from "@/lib/connections";
 import { runSharePointSync } from "@/lib/onedriveSync";
 
 export const runtime = "nodejs";
@@ -21,7 +20,7 @@ export async function POST(_req: NextRequest) {
     );
   }
 
-  const conn = await getConnection(companyScope(user.company_id));
+  const conn = await getConnection(connKey(user.company_id, user.id, "company"));
   if (!conn?.refresh_token) {
     return NextResponse.json(
       { ok: false, error: "El OneDrive empresarial no está conectado." },

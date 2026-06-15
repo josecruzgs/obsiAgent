@@ -2,7 +2,7 @@
 // texto, digiere con Claude y los guarda como notas EMPRESARIALES + indexa.
 import { NextRequest, NextResponse } from "next/server";
 import { extractTextFromBuffer, isSupported } from "@/lib/extract";
-import { requireUser } from "@/lib/currentUser";
+import { requireSuperadmin } from "@/lib/currentUser";
 import { authErrorResponse } from "@/lib/adminAuth";
 import { companyScope, personalScope } from "@/lib/scope";
 import { loadIngestContext, ingestText } from "@/lib/ingest";
@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 export async function POST(req: NextRequest) {
   let user;
   try {
-    user = await requireUser();
+    user = await requireSuperadmin();
   } catch (err) {
     return authErrorResponse(err) ?? NextResponse.json({ ok: false, error: String(err) }, { status: 401 });
   }
@@ -37,12 +37,6 @@ export async function POST(req: NextRequest) {
   }
 
   const kind = form.get("scope") === "company" ? "company" : "personal";
-  if (kind === "company" && user.role !== "superadmin") {
-    return NextResponse.json(
-      { ok: false, error: "Solo el superadmin puede subir a la base empresarial." },
-      { status: 403 }
-    );
-  }
   const scope =
     kind === "company"
       ? companyScope(user.company_id)

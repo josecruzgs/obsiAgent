@@ -63,6 +63,10 @@ export default function RightRail() {
     return `${d.toLocaleDateString("es-MX")} · ${s.ok} ok`;
   }
 
+  // La ingesta y la configuración del vault son tareas de admin: el resto de
+  // usuarios solo consulta, así que no ve OneDrive ni los atajos de administración.
+  const isAdmin = me?.user.role === "superadmin";
+
   return (
     <aside className="rail">
       {/* Cuenta / empresa */}
@@ -89,7 +93,8 @@ export default function RightRail() {
         </div>
       </div>
 
-      {/* OneDrive */}
+      {/* OneDrive (solo admin: configurar/sincronizar el vault) */}
+      {isAdmin && (
       <div className="widget">
         <h3>
           <IconCloudUpload className="widget-ico" />
@@ -149,6 +154,7 @@ export default function RightRail() {
           </Link>
         )}
       </div>
+      )}
 
       {/* Costos estimados de las APIs según el uso */}
       <CostEstimator />
@@ -162,18 +168,22 @@ export default function RightRail() {
           <IconLink className="widget-ico" />
           Atajos
         </h3>
-        <div className="widget-row">
-          <Link href="/ingest" className="k">Ingerir documentos</Link>
-        </div>
+        {isAdmin && (
+          <div className="widget-row">
+            <Link href="/ingest" className="k">Ingerir documentos</Link>
+          </div>
+        )}
         <div className="widget-row">
           <Link href="/notas" className="k">Ver notas</Link>
         </div>
         <div className="widget-row">
           <Link href="/graph" className="k">Grafo de conocimiento</Link>
         </div>
-        <div className="widget-row">
-          <Link href="/config" className="k">Configuración</Link>
-        </div>
+        {isAdmin && (
+          <div className="widget-row">
+            <Link href="/config" className="k">Configuración</Link>
+          </div>
+        )}
       </div>
 
       {/* Tema claro/oscuro, al fondo de la barra. */}

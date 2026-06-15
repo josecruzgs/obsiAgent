@@ -8,8 +8,8 @@ import { getCurrentUser } from "@/lib/currentUser";
 import {
   getConnection,
   listConnectedConnections,
+  connKey,
 } from "@/lib/connections";
-import { companyScope, personalScope } from "@/lib/scope";
 import { runSync, runSharePointSync } from "@/lib/onedriveSync";
 
 export const runtime = "nodejs";
@@ -23,15 +23,15 @@ export async function POST(req: NextRequest) {
     for (const conn of conns) {
       try {
         const r = await runSync(conn);
-        resultados.push({ scope: conn.owner_user_id ? "personal" : "company", ...r });
+        resultados.push({ scope: conn.target, ...r });
       } catch (err) {
         resultados.push({
-          scope: conn.owner_user_id ? "personal" : "company",
+          scope: conn.target,
           error: err instanceof Error ? err.message : String(err),
         });
       }
-      // SharePoint adjunto a la conexión empresarial (si está configurado).
-      if (!conn.owner_user_id && conn.sharepoint?.siteUrl) {
+      // SharePoint adjunto a la conexión de trabajo (si está configurado).
+      if (conn.target === "company" && conn.sharepoint?.siteUrl) {
         try {
           const r = await runSharePointSync(conn);
           resultados.push({ scope: "sharepoint", ...r });
@@ -62,15 +62,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const scope =
-    kind === "company"
-      ? companyScope(user.company_id)
-      : personalScope(user.company_id, user.id);
-
-  const conn = await getConnection(scope);
+  const conn = await getConnection(connKey(user.company_id, user.id, kind));
   if (!conn?.refresh_token) {
     return NextResponse.json(
-      { ok: false, error: "OneDrive no está conectado en este ámbito." },
+      { ok: false, error: "OneDrive no está conectado en esta cuenta." },
       { status: 400 }
     );
   }

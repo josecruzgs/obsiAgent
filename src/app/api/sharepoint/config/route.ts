@@ -5,9 +5,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/currentUser";
 import { authErrorResponse } from "@/lib/adminAuth";
-import { getConnection, upsertConnection, getAccessToken } from "@/lib/connections";
+import { getConnection, upsertConnection, getAccessToken, connKey } from "@/lib/connections";
 import { resolveSharePointDrive } from "@/lib/onedrive";
-import { companyScope } from "@/lib/scope";
 
 export const runtime = "nodejs";
 
@@ -27,15 +26,15 @@ export async function POST(req: NextRequest) {
     }
 
     const { siteUrl, folder } = bodySchema.parse(await req.json());
-    const scope = companyScope(user.company_id);
+    const key = connKey(user.company_id, user.id, "company");
 
     // Quitar SharePoint (URL vacía).
     if (!siteUrl) {
-      await upsertConnection(scope, { sharepoint: null });
+      await upsertConnection(key, { sharepoint: null });
       return NextResponse.json({ ok: true, configured: false });
     }
 
-    const conn = await getConnection(scope);
+    const conn = await getConnection(key);
     if (!conn?.refresh_token) {
       return NextResponse.json(
         { ok: false, error: "Conecta primero el OneDrive empresarial (misma cuenta de trabajo)." },
@@ -44,11 +43,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Valida la URL: pide un token de la cuenta de trabajo y resuelve el sitio.
-    const token = await getAccessToken(scope);
+    const token = await getAccessToken(key);
     const drive = await resolveSharePointDrive(token, siteUrl);
 
     const cleanFolder = folder.replace(/^\/+|\/+$/g, "");
-    await upsertConnection(scope, {
+    await upsertConnection(key, {
       sharepoint: {
         siteUrl: siteUrl.replace(/\/+$/, ""),
         folder: cleanFolder,

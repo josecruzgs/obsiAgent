@@ -13,12 +13,14 @@ import {
   IconLogout,
 } from "./icons";
 
+// `adminOnly`: solo visible para superadmin (la ingesta y la configuración del
+// vault son tareas de administración; el resto de usuarios solo consulta).
 const items = [
   { href: "/", label: "Inicio", icon: IconHome },
-  { href: "/ingest", label: "Ingerir", icon: IconUpload },
+  { href: "/ingest", label: "Ingerir", icon: IconUpload, adminOnly: true },
   { href: "/notas", label: "Notas", icon: IconNotes },
   { href: "/graph", label: "Grafo", icon: IconGraph },
-  { href: "/config", label: "Configuración", icon: IconSettings },
+  { href: "/config", label: "Configuración", icon: IconSettings, adminOnly: true },
 ];
 
 interface Me {
@@ -103,7 +105,9 @@ export default function Sidebar() {
 
       <div className="sidebar-collapse">
       <nav className="sidebar-nav">
-        {items.map((it) => {
+        {items
+          .filter((it) => !it.adminOnly || me?.user.role === "superadmin")
+          .map((it) => {
           const Icon = it.icon;
           return (
             <Link

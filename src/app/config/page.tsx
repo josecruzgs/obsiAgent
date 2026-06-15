@@ -64,7 +64,7 @@ interface SettingKey {
 }
 
 type Kind = "company" | "personal";
-type Expandable = Kind | "sharepoint" | "whatsapp";
+type Expandable = Kind | "sharepoint" | "whatsapp" | "teams";
 
 // Detecta errores que requieren volver a conectar (token inválido / MFA).
 function needsReauth(msg?: string): boolean {
@@ -172,7 +172,8 @@ export default function ConfigPage() {
             <TeamsTile
               connected={status.company.connected}
               canManage={status.isSuperadmin}
-              onManage={() => toggle("company")}
+              expanded={expanded === "teams"}
+              onManage={() => toggle("teams")}
             />
             <SharePointTile
               data={status.sharepoint}
@@ -219,7 +220,14 @@ export default function ConfigPage() {
               setBanner={setBanner}
               onClose={() => setExpanded(null)}
             />
-          ) : expanded && expanded !== "whatsapp" && status[expanded].connected ? (
+          ) : expanded === "teams" ? (
+            <TeamsDetail
+              connected={status.company.connected}
+              canManage={status.isSuperadmin}
+              onClose={() => setExpanded(null)}
+            />
+          ) : (expanded === "company" || expanded === "personal") &&
+            status[expanded].connected ? (
             <ScopeDetail
               kind={expanded}
               title={expanded === "company" ? "OneDrive empresarial" : "OneDrive personal"}
@@ -341,10 +349,12 @@ function OneDriveTile({
 function TeamsTile({
   connected,
   canManage,
+  expanded,
   onManage,
 }: {
   connected: boolean;
   canManage: boolean;
+  expanded: boolean;
   onManage: () => void;
 }) {
   let action: React.ReactNode;
@@ -357,7 +367,7 @@ function TeamsTile({
   } else if (connected) {
     action = (
       <button type="button" className="secondary" onClick={onManage}>
-        Gestionar
+        {expanded ? "Cerrar" : "Gestionar"}
       </button>
     );
   } else {
@@ -372,7 +382,10 @@ function TeamsTile({
   }
 
   return (
-    <div className="integration-card" title="Transcripciones de reuniones de Teams">
+    <div
+      className={`integration-card${expanded ? " active" : ""}`}
+      title="Transcripciones de reuniones de Teams"
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={TEAMS_LOGO} alt="Microsoft Teams" className="integration-logo" />
       <strong>Microsoft Teams</strong>
@@ -382,6 +395,83 @@ function TeamsTile({
         <span className="integration-status muted">No conectado</span>
       )}
       {action}
+    </div>
+  );
+}
+
+// ─── Panel de gestión de Teams (transcripciones de la cuenta de trabajo) ──────
+function TeamsDetail({
+  connected,
+  canManage,
+  onClose,
+}: {
+  connected: boolean;
+  canManage: boolean;
+  onClose: () => void;
+}) {
+  const [syncing, setSyncing] = useState(false);
+  const [teams, setTeams] = useState<string | null>(null);
+
+  async function syncTeams() {
+    setSyncing(true);
+    setTeams(null);
+    try {
+      const res = await fetch(`/api/teams/sync?scope=company`, { method: "POST" });
+      const d = await res.json();
+      setTeams(
+        d.ok
+          ? `✓ Teams: ${d.procesados}/${d.encontrados} transcripción(es) nueva(s), ${d.fallidos} fallida(s)`
+          : `✗ ${d.error}`
+      );
+    } catch (err) {
+      setTeams(`✗ ${String(err)}`);
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  return (
+    <div className="card integration-detail">
+      <div className="integration-detail-head">
+        <h2 className="card-title" style={{ margin: 0 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={TEAMS_LOGO} alt="" className="integration-logo" style={{ width: 24, height: 24 }} />
+          Microsoft Teams
+        </h2>
+        <button type="button" className="secondary" onClick={onClose}>
+          Cerrar
+        </button>
+      </div>
+
+      {!canManage ? (
+        <p className="muted" style={{ marginTop: 10 }}>
+          Solo el superadmin gestiona esta conexión.
+        </p>
+      ) : !connected ? (
+        <p className="muted" style={{ marginTop: 10 }}>
+          Primero conecta tu OneDrive empresarial (Teams usa la misma cuenta de
+          trabajo M365).
+        </p>
+      ) : (
+        <>
+          <p className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+            Trae las transcripciones de tus reuniones de Teams y las añade al vault
+            empresarial compartido (requiere cuenta de trabajo M365).
+          </p>
+          <div style={{ height: 14 }} />
+          <button type="button" onClick={syncTeams} disabled={syncing}>
+            {syncing ? "Trayendo transcripciones…" : "Sincronizar Teams (transcripciones)"}
+          </button>
+          {teams && (
+            <p
+              className={teams.startsWith("✓") ? "success" : "error"}
+              style={{ marginTop: 12, fontSize: 13 }}
+            >
+              {teams}
+            </p>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -649,8 +739,6 @@ function ScopeDetail({
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [sync, setSync] = useState<SyncResult | null>(null);
-  const [teams, setTeams] = useState<string | null>(null);
-  const [syncingTeams, setSyncingTeams] = useState(false);
 
   useEffect(() => setFolder(data.folder), [data.folder]);
 
@@ -692,24 +780,6 @@ function ScopeDetail({
     setSync(null);
     onChanged();
     onClose();
-  }
-
-  async function syncTeams() {
-    setSyncingTeams(true);
-    setTeams(null);
-    try {
-      const res = await fetch(`/api/teams/sync?scope=${kind}`, { method: "POST" });
-      const d = await res.json();
-      setTeams(
-        d.ok
-          ? `✓ Teams: ${d.procesados}/${d.encontrados} transcripción(es) nueva(s), ${d.fallidos} fallida(s)`
-          : `✗ ${d.error}`
-      );
-    } catch (err) {
-      setTeams(`✗ ${String(err)}`);
-    } finally {
-      setSyncingTeams(false);
-    }
   }
 
   return (
@@ -777,29 +847,6 @@ function ScopeDetail({
         <button type="button" className="secondary" onClick={disconnect} disabled={syncing}>
           Desconectar
         </button>
-      </div>
-
-      <div style={{ marginTop: 12 }}>
-        <button
-          type="button"
-          className="secondary"
-          onClick={syncTeams}
-          disabled={syncingTeams}
-        >
-          {syncingTeams ? "Trayendo transcripciones…" : "Sincronizar Teams (transcripciones)"}
-        </button>
-        <p className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-          Trae las transcripciones de tus reuniones de Teams (requiere cuenta de
-          trabajo M365).
-        </p>
-        {teams && (
-          <p
-            className={teams.startsWith("✓") ? "success" : "error"}
-            style={{ marginTop: 8, fontSize: 13 }}
-          >
-            {teams}
-          </p>
-        )}
       </div>
 
       {data.lastSync && (

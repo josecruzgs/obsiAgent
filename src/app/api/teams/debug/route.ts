@@ -13,10 +13,9 @@
 //   ?folder=<nombre>          carpeta a inspeccionar en modo recon (def. Grabaciones)
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
-import { getConnection } from "@/lib/connections";
+import { getConnection, connKey } from "@/lib/connections";
 import { getAppToken, tokenForScope, getRecordingTranscript } from "@/lib/onedrive";
 import { parseStreamTranscript } from "@/lib/extract";
-import { companyScope, personalScope } from "@/lib/scope";
 
 export const runtime = "nodejs";
 
@@ -47,14 +46,10 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const scope =
-    kind === "company"
-      ? companyScope(user.company_id)
-      : personalScope(user.company_id, user.id);
-
-  const conn = await getConnection(scope);
+  const key = connKey(user.company_id, user.id, kind);
+  const conn = await getConnection(key);
   if (!conn) {
-    return NextResponse.json({ ok: false, error: "Sin conexión en este ámbito.", scope });
+    return NextResponse.json({ ok: false, error: "Sin conexión en esta cuenta.", scope: key });
   }
 
   const conexion = {

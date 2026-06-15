@@ -10,7 +10,9 @@
 import {
   getConnection,
   scopeOfConnection,
+  keyOfConnection,
   upsertConnection,
+  type ConnKey,
   type OneDriveConnection,
 } from "./connections";
 import {
@@ -23,7 +25,6 @@ import {
 import { parseStreamTranscript } from "./extract";
 import { runMeetingAgent } from "./agents/meetingAgent";
 import { query } from "./db";
-import { type Scope } from "./scope";
 import { loadIngestContext, ingestText } from "./ingest";
 import { rebuildMoc } from "./moc";
 
@@ -120,7 +121,7 @@ export async function runTeamsSyncForConnection(
   let since = conn.teams_since ? new Date(conn.teams_since) : null;
   if (!since) {
     since = new Date();
-    await upsertConnection(scope, { teams_since: since.toISOString() });
+    await upsertConnection(keyOfConnection(conn), { teams_since: since.toISOString() });
   }
 
   // Idempotencia: ids ya ingeridos.
@@ -210,14 +211,14 @@ export async function runTeamsSyncForConnection(
   };
 }
 
-/** Sincroniza el Teams de un ámbito (para la UI). */
-export async function runTeamsSyncForScope(
-  scope: Scope,
+/** Sincroniza el Teams de una conexión concreta (para la UI). */
+export async function runTeamsSyncForConnKey(
+  key: ConnKey,
   opts: TeamsSyncOptions = {}
 ): Promise<TeamsSyncResult> {
-  const conn = await getConnection(scope);
+  const conn = await getConnection(key);
   if (!conn?.refresh_token) {
-    throw new Error("OneDrive no está conectado en este ámbito.");
+    throw new Error("OneDrive no está conectado en esta cuenta.");
   }
   return runTeamsSyncForConnection(conn, opts);
 }

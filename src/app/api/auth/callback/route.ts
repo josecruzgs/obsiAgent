@@ -22,8 +22,7 @@ import {
   sessionCookieOptions,
   cookieSecure,
 } from "@/lib/session";
-import { getConnection, upsertConnection } from "@/lib/connections";
-import { companyScope, personalScope } from "@/lib/scope";
+import { upsertConnection, connKey } from "@/lib/connections";
 
 export const runtime = "nodejs";
 
@@ -31,27 +30,21 @@ function back(params: string): NextResponse {
   return NextResponse.redirect(`${env.publicBaseUrl}/login?${params}`);
 }
 
-/** Persiste el refresh token del login como conexión personal (siempre) y, si es
- *  superadmin, también como conexión empresarial — sin pisar una empresarial ya
- *  conectada con OTRA cuenta. */
+/** Persiste el refresh token del login como la conexión de TRABAJO del admin
+ *  (target='company' → vault compartido). Solo para admins (los miembros solo
+ *  consultan). El OneDrive personal se conecta aparte en /config (puede ser otra
+ *  cuenta), así no se pisa con la del login. */
 async function saveLoginConnections(
   user: User,
   identity: MicrosoftIdentity
 ): Promise<void> {
-  const patch = {
+  if (user.role !== "superadmin") return;
+  await upsertConnection(connKey(user.company_id, user.id, "company"), {
     refresh_token: identity.refreshToken,
     account: identity.email,
     tenant_id: identity.tenantId,
     ms_user_id: identity.oid || null,
-  };
-  await upsertConnection(personalScope(user.company_id, user.id), patch);
-
-  if (user.role === "superadmin") {
-    const company = await getConnection(companyScope(user.company_id));
-    if (!company?.refresh_token || company.account === identity.email) {
-      await upsertConnection(companyScope(user.company_id), patch);
-    }
-  }
+  });
 }
 
 export async function GET(req: NextRequest) {

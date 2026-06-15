@@ -21,10 +21,22 @@ const PUBLIC_PREFIXES = [
   "/api/voice", // agente de voz (Retell): protegido por token en el route
 ];
 
+// Rutas reservadas al superadmin: configuración e ingesta de conocimiento.
+// El resto de usuarios solo consulta (web o WhatsApp), no administra el vault.
+// Los routes de escritura también lo revalidan contra la DB (requireSuperadmin).
+const ADMIN_PREFIXES = [
+  "/config",
+  "/ingest",
+  "/api/ingest",
+  "/api/upload",
+];
+
+function matchesPrefix(pathname: string, prefixes: string[]): boolean {
+  return prefixes.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
 function isPublic(pathname: string): boolean {
-  return PUBLIC_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(p + "/")
-  );
+  return matchesPrefix(pathname, PUBLIC_PREFIXES);
 }
 
 export async function middleware(req: NextRequest) {
@@ -33,7 +45,19 @@ export async function middleware(req: NextRequest) {
 
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const session = await verifySession(token);
-  if (session) return NextResponse.next();
+  if (session) {
+    // Autenticado: bloquea las rutas de admin a quien no es superadmin.
+    if (matchesPrefix(pathname, ADMIN_PREFIXES) && session.role !== "superadmin") {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+      }
+      const url = req.nextUrl.clone();
+      url.pathname = "/";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
 
   // No autenticado.
   if (pathname.startsWith("/api/")) {

@@ -287,14 +287,15 @@ async function main() {
   }
   console.log(`\n  ${NOTES.length} notas indexadas (con embeddings + enlaces)`);
 
-  // Conexión OneDrive empresarial "conectada" (para /config y RightRail)
+  // Conexión de trabajo "conectada" del superadmin demo (para /config y RightRail)
   await query(
-    `insert into onedrive_connections (company_id, owner_user_id, account, folder, last_sync)
-     values ($1, null, $2, 'ObsiAgent', $3)
-     on conflict (company_id) where owner_user_id is null
+    `insert into onedrive_connections (company_id, owner_user_id, target, account, folder, last_sync)
+     values ($1, $2, 'company', $3, 'ObsiAgent', $4)
+     on conflict (owner_user_id, target)
      do update set account = excluded.account, last_sync = excluded.last_sync`,
     [
       company.id,
+      owner.id,
       `ana.reyes@${DOMAIN}`,
       JSON.stringify({ at: "2026-06-07T15:30:00.000Z", ok: 18, failed: 0 }),
     ]

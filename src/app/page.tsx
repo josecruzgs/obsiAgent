@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { query } from "@/lib/db";
+import { getCurrentUser } from "@/lib/currentUser";
 import { IconBook, IconLink, IconUpload, IconNotes, IconGraph } from "@/components/icons";
 import AgentsBoard from "@/components/AgentsBoard";
 import VoiceCallButton from "@/components/VoiceCallButton";
@@ -29,6 +30,7 @@ const ACTIONS = [
     color: "#6c5ce7",
     title: "Ingerir",
     desc: "Sube PDF/Word o pega texto. La IA genera resumen, tags y enlaces.",
+    adminOnly: true,
   },
   {
     href: "/notas",
@@ -50,6 +52,9 @@ const ACTIONS = [
 
 export default async function Home() {
   const stats = await getStats();
+  const user = await getCurrentUser();
+  const isAdmin = user?.role === "superadmin";
+  const actions = ACTIONS.filter((a) => !a.adminOnly || isAdmin);
 
   return (
     <div className="home">
@@ -100,7 +105,7 @@ export default async function Home() {
           <div className="stat-num">{stats.links}</div>
           <div className="stat-foot">conexiones detectadas por la IA</div>
         </div>
-        {ACTIONS.map((a) => (
+        {actions.map((a) => (
           <Link key={a.href} href={a.href} className="action">
             <div className="action-icon" style={{ background: a.bg, color: a.color }}>
               {a.icon}
